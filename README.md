@@ -193,7 +193,6 @@ config/ansible/roles/<tool_name>/
 Run the test scripts to verify functionality:
 ```bash
 ./test-installer.sh          # Basic tests
-./test-installer-windows.sh  # Comprehensive test suite
 ```
 
 ### Debugging
@@ -203,26 +202,3 @@ Enable verbose logging by setting the debug flag:
 # Edit the script and add after line 14:
 set -x  # Enable bash debug output
 ```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request to the [GitHub repository](https://github.com/bbTwilio/tool-install).
-
-### Areas for Contribution
-
-- Additional tool roles
-- Linux/Windows support
-- Enhanced error handling
-- Documentation improvements
-- Test coverage
-
-## License
-
-This project is open source. See the [LICENSE](LICENSE) file for details.
-
-## Credits
-
-- **gum**: Charm's excellent TUI toolkit ([charmbracelet/gum](https://github.com/charmbracelet/gum))
-- **Ansible**: Red Hat's automation platform
-- **Homebrew**: The missing package manager for macOS
-- Inspired by [Twilio's engineering laptop setup](https://github.com/segmentio/engineering-laptop-setup)
