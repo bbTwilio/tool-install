@@ -2,26 +2,9 @@
 # macOS Tool Installer with Gum UI
 # This script provides an interactive interface for installing development tools on macOS
 # using gum for the UI and Ansible for the backend installation logic
+# Compatible with bash 3.2+ (default macOS bash)
 
 set -euo pipefail
-
-# Check bash version (requires bash 4+ for associative arrays)
-if [[ "${BASH_VERSION%%.*}" -lt 4 ]]; then
-    echo "Error: This script requires bash version 4 or higher."
-    echo "Your current bash version is: ${BASH_VERSION}"
-    echo ""
-    echo "On macOS, you can install a newer bash with Homebrew:"
-    echo "  brew install bash"
-    echo ""
-    echo "Then run the script with:"
-    echo "  /usr/local/bin/bash $0"
-    echo "  # or on Apple Silicon Macs:"
-    echo "  /opt/homebrew/bin/bash $0"
-    echo ""
-    echo "Alternatively, use the compatibility launcher:"
-    echo "  ./install-tools-compat.sh"
-    exit 1
-fi
 
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,13 +20,50 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Associative arrays for tool data
-declare -A installed_tools
-declare -A tool_names
-declare -A tool_descriptions
-declare -A tool_categories
-declare -A tool_commands
-declare -A post_install_docs
+# Arrays for tool data (using parallel arrays for bash 3.2 compatibility)
+ALL_TOOLS=()
+TOOL_NAMES=()
+TOOL_DESCRIPTIONS=()
+TOOL_CATEGORIES=()
+TOOL_COMMANDS=()
+TOOL_INSTALLED=()
+TOOL_DOCS=()
+
+# Function to find array index of a tool
+get_tool_index() {
+    local tool_id="$1"
+    local i
+    for i in "${!ALL_TOOLS[@]}"; do
+        if [[ "${ALL_TOOLS[$i]}" == "$tool_id" ]]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to get tool property by index
+get_tool_prop() {
+    local tool_id="$1"
+    local prop="$2"
+    local idx=$(get_tool_index "$tool_id")
+
+    case "$prop" in
+        name) echo "${TOOL_NAMES[$idx]}" ;;
+        description) echo "${TOOL_DESCRIPTIONS[$idx]}" ;;
+        category) echo "${TOOL_CATEGORIES[$idx]}" ;;
+        command) echo "${TOOL_COMMANDS[$idx]}" ;;
+        installed) echo "${TOOL_INSTALLED[$idx]}" ;;
+        docs) echo "${TOOL_DOCS[$idx]}" ;;
+    esac
+}
+
+# Function to set tool as installed
+set_tool_installed() {
+    local tool_id="$1"
+    local idx=$(get_tool_index "$tool_id")
+    TOOL_INSTALLED[$idx]=1
+}
 
 # Function to log messages
 log_message() {
@@ -82,426 +102,366 @@ check_and_install_dependencies() {
             fi
             deps_installed=true
         else
-            gum style --foreground 196 "Homebrew is required to continue."
+            echo -e "${RED}Error: Homebrew is required to proceed.${NC}"
             exit 1
         fi
     fi
 
     # Check for gum
     if ! command -v gum &>/dev/null; then
-        gum style --foreground 214 "Installing gum (UI toolkit)..."
+        echo "Installing gum (terminal UI toolkit)..."
         brew install gum
         deps_installed=true
     fi
 
     # Check for Ansible
     if ! command -v ansible-playbook &>/dev/null; then
-        gum spin --spinner dots --title "Installing Ansible..." -- \
-            brew install ansible
+        echo "Installing Ansible..."
+        brew install ansible
         deps_installed=true
     fi
 
-    # Check for yq (for better YAML parsing)
+    # Check for yq (YAML processor)
     if ! command -v yq &>/dev/null; then
-        gum spin --spinner dots --title "Installing yq (YAML processor)..." -- \
-            brew install yq
+        echo "Installing yq (YAML processor)..."
+        brew install yq
         deps_installed=true
     fi
 
-    if $deps_installed; then
-        gum style --foreground 46 "✅ Dependencies installed successfully!"
-        sleep 1
+    if [[ "$deps_installed" == true ]]; then
+        echo -e "${GREEN}Dependencies installed successfully!${NC}"
     fi
 }
 
-# Function to extract tool IDs from YAML
-get_tool_ids() {
-    if command -v yq &>/dev/null; then
-        yq '.tools | keys | .[]' "$TOOLS_YAML" 2>/dev/null
-    else
-        # Fallback to awk if yq is not available
-        awk '/^tools:/{flag=1} /^[a-z]/{flag=0} flag && /^  [a-z_]+:/{gsub(/:/, ""); print $1}' "$TOOLS_YAML"
-    fi
-}
-
-# Function to get tool property using yq or awk
+# Function to get tool property from YAML
 get_tool_property() {
-    local tool="$1"
-    local property="$2"
-
-    if command -v yq &>/dev/null; then
-        yq ".tools.$tool.$property" "$TOOLS_YAML" 2>/dev/null | sed 's/null//'
-    else
-        # Fallback to awk
-        awk -v tool="$tool" -v prop="$property" '
-            $0 ~ "^  " tool ":$" {in_tool=1}
-            in_tool && /^  [a-z]/ && !($0 ~ "^    ") {exit}
-            in_tool && $0 ~ "^    " prop ":" {
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-                gsub(prop ":[[:space:]]*", "", $0)
-                gsub(/["'\'']/, "", $0)
-                print $0
-                exit
-            }
-        ' "$TOOLS_YAML"
-    fi
+    local tool=$1
+    local property=$2
+    yq eval ".tools.${tool}.${property}" "$TOOLS_YAML" 2>/dev/null || echo ""
 }
 
-# Function to load tool data
-load_tool_data() {
-    log_message "Loading tool data from $TOOLS_YAML"
+# Function to load tools from YAML
+load_tools() {
+    local tools_list tools_array
 
-    local tool_ids
-    tool_ids=$(get_tool_ids)
+    # Get list of tools, filtering out metadata groups
+    tools_list=$(yq eval '.tools | keys | .[]' "$TOOLS_YAML" 2>/dev/null | \
+                 grep -v -E '^(essential|cloud|full|ansible|homebrew|ui|logging)$')
 
-    for tool in $tool_ids; do
-        tool_names[$tool]=$(get_tool_property "$tool" "name")
-        tool_descriptions[$tool]=$(get_tool_property "$tool" "description")
-        tool_categories[$tool]=$(get_tool_property "$tool" "category")
-        tool_commands[$tool]=$(get_tool_property "$tool" "command")
+    # Convert to array
+    IFS=$'\n' read -d '' -r -a tools_array <<< "$tools_list" || true
 
-        # Set documentation URLs for specific tools
+    for tool in "${tools_array[@]}"; do
+        # Skip empty lines
+        [[ -z "$tool" ]] && continue
+
+        ALL_TOOLS+=("$tool")
+        TOOL_NAMES+=("$(get_tool_property "$tool" "name")")
+        TOOL_DESCRIPTIONS+=("$(get_tool_property "$tool" "description")")
+        TOOL_CATEGORIES+=("$(get_tool_property "$tool" "category")")
+        TOOL_COMMANDS+=("$(get_tool_property "$tool" "command")")
+        TOOL_INSTALLED+=(0)
+
+        # Set documentation URLs
+        local doc_url=""
         case "$tool" in
-            git)
-                post_install_docs[$tool]="https://git-scm.com/doc"
-                ;;
-            github_cli)
-                post_install_docs[$tool]="https://cli.github.com/manual/"
-                ;;
-            ngrok)
-                post_install_docs[$tool]="https://ngrok.com/docs"
-                ;;
-            claude_code)
-                post_install_docs[$tool]="https://claude.ai/docs"
-                ;;
-            aws_cli)
-                post_install_docs[$tool]="https://docs.aws.amazon.com/cli/latest/userguide/"
-                ;;
-            docker)
-                post_install_docs[$tool]="https://docs.docker.com/"
-                ;;
-            kubernetes_cli)
-                post_install_docs[$tool]="https://kubernetes.io/docs/reference/kubectl/"
-                ;;
-            terraform)
-                post_install_docs[$tool]="https://developer.hashicorp.com/terraform/docs"
-                ;;
-            ansible)
-                post_install_docs[$tool]="https://docs.ansible.com/"
-                ;;
-            nodejs)
-                post_install_docs[$tool]="https://nodejs.org/docs/"
-                ;;
-            python)
-                post_install_docs[$tool]="https://docs.python.org/3/"
-                ;;
-            rust)
-                post_install_docs[$tool]="https://www.rust-lang.org/learn"
-                ;;
-            go)
-                post_install_docs[$tool]="https://go.dev/doc/"
-                ;;
-            java)
-                post_install_docs[$tool]="https://docs.oracle.com/en/java/"
-                ;;
-            vscode)
-                post_install_docs[$tool]="https://code.visualstudio.com/docs"
-                ;;
-            neovim)
-                post_install_docs[$tool]="https://neovim.io/doc/"
-                ;;
-            tmux)
-                post_install_docs[$tool]="https://github.com/tmux/tmux/wiki"
-                ;;
-            jq)
-                post_install_docs[$tool]="https://jqlang.github.io/jq/manual/"
-                ;;
-            gum)
-                post_install_docs[$tool]="https://github.com/charmbracelet/gum"
-                ;;
+            git) doc_url="https://git-scm.com/doc" ;;
+            github_cli) doc_url="https://cli.github.com/manual/" ;;
+            ngrok) doc_url="https://ngrok.com/docs" ;;
+            claude_code) doc_url="https://claude.ai/docs" ;;
+            aws_cli) doc_url="https://docs.aws.amazon.com/cli/latest/userguide/" ;;
+            docker) doc_url="https://docs.docker.com/" ;;
+            kubernetes_cli) doc_url="https://kubernetes.io/docs/reference/kubectl/" ;;
+            terraform) doc_url="https://developer.hashicorp.com/terraform/docs" ;;
+            ansible) doc_url="https://docs.ansible.com/" ;;
+            nodejs) doc_url="https://nodejs.org/docs/" ;;
+            python) doc_url="https://docs.python.org/3/" ;;
+            rust) doc_url="https://www.rust-lang.org/learn" ;;
+            go) doc_url="https://go.dev/doc/" ;;
+            java) doc_url="https://docs.oracle.com/en/java/" ;;
+            vscode) doc_url="https://code.visualstudio.com/docs" ;;
+            neovim) doc_url="https://neovim.io/doc/" ;;
+            tmux) doc_url="https://github.com/tmux/tmux/wiki" ;;
+            jq) doc_url="https://jqlang.github.io/jq/manual/" ;;
+            gum) doc_url="https://github.com/charmbracelet/gum" ;;
         esac
+        TOOL_DOCS+=("$doc_url")
 
-        # Debug logging
-        log_message "Loaded tool: $tool - ${tool_names[$tool]}"
+        log_message "Loaded tool: $tool - ${TOOL_NAMES[-1]}"
     done
 }
 
 # Function to detect installed tools
 detect_installed_tools() {
-    log_message "Detecting installed tools..."
-
-    for tool in "${!tool_commands[@]}"; do
-        local cmd="${tool_commands[$tool]}"
-        if [[ -n "$cmd" ]] && [[ "$cmd" != "null" ]] && command -v "$cmd" &>/dev/null; then
-            installed_tools[$tool]=1
-            log_message "Tool $tool is installed (command: $cmd found)"
-        else
-            log_message "Tool $tool is not installed (command: $cmd not found)"
+    local i
+    for i in "${!ALL_TOOLS[@]}"; do
+        local cmd="${TOOL_COMMANDS[$i]}"
+        if [[ -n "$cmd" ]] && command -v "$cmd" &>/dev/null; then
+            TOOL_INSTALLED[$i]=1
+            log_message "Detected installed: ${ALL_TOOLS[$i]}"
         fi
     done
 }
 
-# Function to show tool selection UI
-show_tool_selection() {
-    local options=()
-    local pre_selected=()
-    local display_items=()
+# Function to build tool selection list
+build_tool_list() {
+    local tool_list=()
+    local preselected=()
 
-    # Build options list
-    for tool in $(get_tool_ids | sort); do
-        # Skip information-only items
-        [[ "$tool" == "aws_jit_sso" ]] && continue
-
-        local name="${tool_names[$tool]}"
-        local desc="${tool_descriptions[$tool]}"
-        local category="${tool_categories[$tool]}"
+    local i
+    for i in "${!ALL_TOOLS[@]}"; do
+        local tool="${ALL_TOOLS[$i]}"
+        local name="${TOOL_NAMES[$i]}"
+        local desc="${TOOL_DESCRIPTIONS[$i]}"
+        local category="${TOOL_CATEGORIES[$i]}"
 
         # Build display string
-        local status=""
-        if [[ -n "${installed_tools[$tool]:-}" ]]; then
-            status=" $(gum style --foreground 46 '✓')"
+        local display="[$category] $name - $desc"
+
+        if [[ "${TOOL_INSTALLED[$i]}" == "1" ]]; then
+            display="✓ $display"
         else
-            # Add to pre-selected if not installed (based on settings)
-            pre_selected+=("$tool")
+            # Pre-select uninstalled tools
+            preselected+=("$display")
         fi
 
-        # Format: tool_id|display_string (we'll extract tool_id later)
-        local display="[$category] $name$status - $desc"
-        options+=("$tool|$display")
-        display_items+=("$display")
+        tool_list+=("$display")
     done
 
-    # Show multi-select UI
-    local selected
-    if [[ ${#pre_selected[@]} -gt 0 ]]; then
-        # Convert pre_selected tool IDs to display strings
-        local pre_selected_display=()
-        for tool_id in "${pre_selected[@]}"; do
-            for opt in "${options[@]}"; do
-                if [[ "${opt%%|*}" == "$tool_id" ]]; then
-                    pre_selected_display+=("${opt#*|}")
-                    break
-                fi
-            done
-        done
+    # Output for gum with pre-selected items
+    printf "%s\n" "${tool_list[@]}" | \
+        gum choose --no-limit --header "Select tools to install (Space to toggle, Enter to confirm):" \
+                   --selected="${preselected[@]}"
+}
 
-        selected=$(printf '%s\n' "${display_items[@]}" | \
-            gum choose --no-limit \
-            --header "Select tools to install (Space=toggle, Enter=confirm):" \
-            --selected "${pre_selected_display[@]}" \
-            --height 15)
-    else
-        selected=$(printf '%s\n' "${display_items[@]}" | \
-            gum choose --no-limit \
-            --header "Select tools to install (Space=toggle, Enter=confirm):" \
-            --height 15)
+# Function to extract tool ID from display string
+extract_tool_id() {
+    local display_string="$1"
+    # Remove checkmark if present
+    display_string="${display_string#✓ }"
+    # Extract the name part between [] and -
+    local name_part="${display_string#*] }"
+    name_part="${name_part%% -*}"
+
+    # Find matching tool
+    local i
+    for i in "${!TOOL_NAMES[@]}"; do
+        if [[ "${TOOL_NAMES[$i]}" == "$name_part" ]]; then
+            echo "${ALL_TOOLS[$i]}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to install tools using Ansible
+install_tools() {
+    local tools_to_install=("$@")
+
+    if [[ ${#tools_to_install[@]} -eq 0 ]]; then
+        echo "No tools selected for installation."
+        return 0
     fi
 
-    echo "$selected"
-}
+    echo -e "${BLUE}Installing selected tools using Ansible...${NC}"
+    log_message "Starting Ansible installation for: ${tools_to_install[*]}"
 
-# Function to extract tool IDs from selection
-extract_tool_ids_from_selection() {
-    local selection="$1"
-    local extracted_tools=()
+    # Create tools string for Ansible
+    local tools_json=$(printf '%s\n' "${tools_to_install[@]}" | jq -R . | jq -s .)
 
-    while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
+    # Run Ansible playbook with spinner
+    gum spin --spinner dots --title "Running Ansible playbook..." -- \
+        ansible-playbook "$PLAYBOOK" \
+        -e "selected_tools=$tools_json" \
+        -vv >> "$LOG_FILE" 2>&1
 
-        # Extract tool ID by matching against our options
-        for tool in $(get_tool_ids); do
-            [[ "$tool" == "aws_jit_sso" ]] && continue
+    local result=$?
 
-            local name="${tool_names[$tool]}"
-            if [[ "$line" == *"$name"* ]]; then
-                extracted_tools+=("$tool")
-                break
-            fi
-        done
-    done <<< "$selection"
-
-    printf '%s\n' "${extracted_tools[@]}"
-}
-
-# Function to run Ansible playbook
-run_installation() {
-    local tools=("$@")
-
-    log_message "Starting installation of tools: ${tools[*]}"
-
-    # Format tools for Ansible JSON array
-    local tools_json=""
-    for tool in "${tools[@]}"; do
-        [[ -n "$tools_json" ]] && tools_json+=","
-        tools_json+="\"$tool\""
-    done
-    tools_json="[$tools_json]"
-
-    # Create temporary inventory
-    local temp_inventory="/tmp/ansible-inventory-$$"
-    echo "localhost ansible_connection=local" > "$temp_inventory"
-
-    # Run Ansible playbook with progress indicator
-    local ansible_output="/tmp/ansible-output-$$"
-
-    gum spin --spinner dots --title "Installing tools via Ansible..." -- \
-        ansible-playbook \
-            -i "$temp_inventory" \
-            "${PLAYBOOK}" \
-            --extra-vars "{\"selected_tools\": $tools_json}" \
-            --extra-vars "ansible_python_interpreter=$(which python3)" \
-            2>&1 | tee "$ansible_output" >> "$LOG_FILE"
-
-    local exit_code=${PIPESTATUS[0]}
-
-    # Clean up
-    rm -f "$temp_inventory"
-
-    if [[ $exit_code -eq 0 ]]; then
-        log_message "Installation completed successfully"
+    if [[ $result -eq 0 ]]; then
+        echo -e "${GREEN}✓ Installation completed successfully!${NC}"
+        log_message "Ansible installation completed successfully"
         return 0
     else
-        log_message "Installation failed with exit code: $exit_code"
-        gum style --foreground 196 "❌ Installation failed. Check log file: $LOG_FILE"
-
-        # Show last few lines of error
-        if [[ -f "$ansible_output" ]]; then
-            echo "Last error output:"
-            tail -n 10 "$ansible_output"
-        fi
-        rm -f "$ansible_output"
+        echo -e "${RED}✗ Installation failed. Check the log for details: $LOG_FILE${NC}"
+        log_message "Ansible installation failed with exit code: $result"
         return 1
     fi
 }
 
 # Function to show post-installation instructions
 show_post_install_instructions() {
-    local tools=("$@")
-    local instructions=""
+    local tools_installed=("$@")
 
-    for tool in "${tools[@]}"; do
-        case "$tool" in
-            git)
-                instructions+="• Git: Configure user with 'git config --global user.name \"Your Name\"'\n"
-                ;;
-            github_cli)
-                instructions+="• GitHub CLI: Authenticate with 'gh auth login'\n"
-                ;;
-            ngrok)
-                instructions+="• Ngrok: Configure authtoken with 'ngrok config add-authtoken YOUR_TOKEN'\n"
-                ;;
-            claude_code)
-                instructions+="• Claude Code: Authenticate with 'claude auth'\n"
-                ;;
-            aws_cli)
-                instructions+="• AWS CLI: Configure SSO with 'aws configure sso'\n"
-                ;;
-        esac
-    done
-
-    if [[ -n "$instructions" ]]; then
-        gum style --border normal --padding "1" --margin "1" \
-            --foreground 214 "Post-Installation Steps:"
-        echo -e "$instructions"
+    if [[ ${#tools_installed[@]} -eq 0 ]]; then
+        return
     fi
 
-    # Open documentation in browser for installed tools
-    for tool in "${tools[@]}"; do
-        if [[ -n "${post_install_docs[$tool]}" ]]; then
-            open_tool_docs "${tool_names[$tool]}" "${post_install_docs[$tool]}"
+    echo ""
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+    echo -e "${GREEN}Post-Installation Instructions${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+
+    for tool in "${tools_installed[@]}"; do
+        local idx=$(get_tool_index "$tool")
+        local name="${TOOL_NAMES[$idx]}"
+
+        case "$tool" in
+            git)
+                echo -e "${YELLOW}Git:${NC}"
+                echo "  Configure your identity:"
+                echo "    git config --global user.name \"Your Name\""
+                echo "    git config --global user.email \"your.email@example.com\""
+                ;;
+            github_cli)
+                echo -e "${YELLOW}GitHub CLI:${NC}"
+                echo "  Authenticate with GitHub:"
+                echo "    gh auth login"
+                ;;
+            ngrok)
+                echo -e "${YELLOW}Ngrok:${NC}"
+                echo "  Add your auth token:"
+                echo "    ngrok config add-authtoken YOUR_TOKEN"
+                ;;
+            claude_code)
+                echo -e "${YELLOW}Claude Code:${NC}"
+                echo "  Authenticate with Claude:"
+                echo "    claude auth"
+                ;;
+            aws_cli)
+                echo -e "${YELLOW}AWS CLI:${NC}"
+                echo "  Configure AWS credentials:"
+                echo "    aws configure"
+                echo "  Or for SSO:"
+                echo "    aws configure sso"
+                ;;
+            docker)
+                echo -e "${YELLOW}Docker:${NC}"
+                echo "  Start Docker Desktop application"
+                ;;
+            vscode)
+                echo -e "${YELLOW}VS Code:${NC}"
+                echo "  Install from command line:"
+                echo "    code ."
+                ;;
+        esac
+
+        # Offer to open documentation
+        local doc_url="${TOOL_DOCS[$idx]}"
+        if [[ -n "$doc_url" ]]; then
+            open_tool_docs "$name" "$doc_url"
         fi
+    done
+
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+}
+
+# Function to run installer in dry-run mode
+dry_run() {
+    echo -e "${YELLOW}Running in DRY-RUN mode (no changes will be made)${NC}"
+    log_message "Dry-run mode activated"
+
+    load_tools
+    detect_installed_tools
+
+    echo ""
+    echo "Available tools:"
+    local i
+    for i in "${!ALL_TOOLS[@]}"; do
+        local status="[ ]"
+        if [[ "${TOOL_INSTALLED[$i]}" == "1" ]]; then
+            status="[✓]"
+        fi
+        echo "  $status ${TOOL_NAMES[$i]}"
     done
 }
 
-# Main execution function
+# Main installation flow
 main() {
-    # Platform check
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+    echo -e "${BLUE}    macOS Development Tools Installer${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+    echo ""
+
+    # Check for dry-run mode
+    if [[ "${1:-}" == "--dry-run" ]] || [[ "${1:-}" == "-n" ]]; then
+        dry_run
+        exit 0
+    fi
+
+    # Check platform
     if [[ "$(uname)" != "Darwin" ]]; then
-        gum style --foreground 196 "❌ This script requires macOS"
+        echo -e "${RED}Error: This script requires macOS${NC}"
         exit 1
     fi
 
-    # Create log file
-    touch "$LOG_FILE"
     log_message "Starting macOS Tool Installer"
 
-    # Welcome banner
-    gum style \
-        --border double \
-        --border-foreground 212 \
-        --padding "1 2" \
-        --margin "1" \
-        --foreground 212 \
-        --bold \
-        "macOS Tool Installer"
-
-    gum style \
-        --foreground 245 \
-        --margin "0 2 1" \
-        "Interactive installer for development tools using Ansible" \
-        "" \
-        "Log file: $LOG_FILE"
-
     # Check and install dependencies
+    echo "Checking dependencies..."
     check_and_install_dependencies
 
-    # Load tool data
-    gum spin --spinner dots --title "Loading tool configuration..." -- \
-        load_tool_data
+    # Load tools from YAML
+    echo "Loading tool definitions..."
+    load_tools
 
-    # Detect installed tools
+    # Detect already installed tools
+    echo "Detecting installed tools..."
     detect_installed_tools
 
-    # Show tool selection UI
-    local selected
-    selected=$(show_tool_selection)
-
-    # Check if anything was selected
-    if [[ -z "$selected" ]]; then
-        gum style --foreground 214 "No tools selected for installation."
-        exit 0
-    fi
-
-    # Extract tool IDs from selection
-    local tools_to_install
-    tools_to_install=$(extract_tool_ids_from_selection "$selected")
-
-    # Convert to array
-    IFS=$'\n' read -d '' -ra tool_array <<< "$tools_to_install" || true
-
-    if [[ ${#tool_array[@]} -eq 0 ]]; then
-        gum style --foreground 214 "No valid tools identified from selection."
-        exit 0
-    fi
-
-    # Show confirmation
-    gum style --foreground 245 "Selected tools for installation:"
-    for tool in "${tool_array[@]}"; do
-        echo "  • ${tool_names[$tool]}"
-    done
+    # Build and show selection menu
     echo ""
+    selected_items=$(build_tool_list)
 
-    if gum confirm "Install ${#tool_array[@]} selected tool(s)?"; then
-        # Run installation
-        if run_installation "${tool_array[@]}"; then
-            gum style --foreground 46 --bold "✅ Installation complete!"
+    if [[ -z "$selected_items" ]]; then
+        echo "No tools selected. Exiting."
+        exit 0
+    fi
 
-            # Show post-installation instructions
-            show_post_install_instructions "${tool_array[@]}"
+    # Parse selected tools
+    tools_to_install=()
+    while IFS= read -r item; do
+        # Skip empty lines
+        [[ -z "$item" ]] && continue
+
+        # Skip already installed tools (those with checkmarks)
+        if [[ "$item" == "✓ "* ]]; then
+            continue
+        fi
+
+        # Extract tool ID from display string
+        tool_id=$(extract_tool_id "$item")
+        if [[ -n "$tool_id" ]]; then
+            tools_to_install+=("$tool_id")
+        fi
+    done <<< "$selected_items"
+
+    # Confirm selection
+    if [[ ${#tools_to_install[@]} -gt 0 ]]; then
+        echo ""
+        echo "Tools to install:"
+        for tool in "${tools_to_install[@]}"; do
+            local idx=$(get_tool_index "$tool")
+            echo "  • ${TOOL_NAMES[$idx]}"
+        done
+        echo ""
+
+        if gum confirm "Proceed with installation?"; then
+            # Install tools
+            if install_tools "${tools_to_install[@]}"; then
+                # Show post-installation instructions
+                show_post_install_instructions "${tools_to_install[@]}"
+
+                echo ""
+                echo -e "${GREEN}Installation complete!${NC}"
+                echo "Log file: $LOG_FILE"
+            fi
         else
-            exit 1
+            echo "Installation cancelled."
         fi
     else
-        gum style --foreground 214 "Installation cancelled."
+        echo "All selected tools are already installed."
     fi
-
-    # Show log file location
-    echo ""
-    gum style --foreground 245 "Installation log saved to: $LOG_FILE"
 }
-
-# Handle Ctrl+C gracefully
-trap 'echo ""; gum style --foreground 214 "Installation cancelled by user."; exit 130' INT
 
 # Run main function
 main "$@"

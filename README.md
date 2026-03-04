@@ -29,7 +29,7 @@ cd tool-install
 ## Prerequisites
 
 - macOS (Darwin)
-- Bash 4.0 or higher (see [Bash Version](#bash-version) section if you encounter issues)
+- Bash shell (3.2+ compatible - works with default macOS bash)
 - Internet connection for downloading dependencies
 
 ## Installation
@@ -129,29 +129,6 @@ The log includes:
 - Error messages (if any)
 
 ## Troubleshooting
-
-### Bash Version
-
-If you encounter the error `declare: -A: invalid option`, your system has an older version of bash (macOS ships with bash 3.2 by default).
-
-**Solution:**
-
-1. Install bash 4+ with Homebrew:
-```bash
-brew install bash
-```
-
-2. Run the installer with the newer bash:
-```bash
-# On Intel Macs:
-/usr/local/bin/bash install-tools.sh
-
-# On Apple Silicon Macs:
-/opt/homebrew/bin/bash install-tools.sh
-
-# Or use the compatibility launcher:
-./install-tools-compat.sh
-```
 
 ### Script fails with "This script requires macOS"
 
