@@ -10,6 +10,7 @@ A lightweight, interactive tool installer for macOS that uses shell scripting wi
 # Clone and run
 git clone https://github.com/bbTwilio/tool-install.git
 cd tool-install
+git pull
 chmod +x install-tools.sh
 ./install-tools.sh
 ```
