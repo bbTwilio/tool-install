@@ -155,11 +155,18 @@ load_tools() {
         # Skip empty lines
         [[ -z "$tool" ]] && continue
 
+        # Get tool properties
+        local tool_name="$(get_tool_property "$tool" "name")"
+        local tool_desc="$(get_tool_property "$tool" "description")"
+        local tool_cat="$(get_tool_property "$tool" "category")"
+        local tool_cmd="$(get_tool_property "$tool" "command")"
+
+        # Add to arrays
         ALL_TOOLS+=("$tool")
-        TOOL_NAMES+=("$(get_tool_property "$tool" "name")")
-        TOOL_DESCRIPTIONS+=("$(get_tool_property "$tool" "description")")
-        TOOL_CATEGORIES+=("$(get_tool_property "$tool" "category")")
-        TOOL_COMMANDS+=("$(get_tool_property "$tool" "command")")
+        TOOL_NAMES+=("$tool_name")
+        TOOL_DESCRIPTIONS+=("$tool_desc")
+        TOOL_CATEGORIES+=("$tool_cat")
+        TOOL_COMMANDS+=("$tool_cmd")
         TOOL_INSTALLED+=(0)
 
         # Set documentation URLs
@@ -187,8 +194,7 @@ load_tools() {
         esac
         TOOL_DOCS+=("$doc_url")
 
-        local last_idx=$((${#TOOL_NAMES[@]} - 1))
-        log_message "Loaded tool: $tool - ${TOOL_NAMES[$last_idx]}"
+        log_message "Loaded tool: $tool - $tool_name"
     done
 }
 
