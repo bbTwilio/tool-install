@@ -2,15 +2,29 @@
 
 A lightweight, interactive tool installer for macOS that uses shell scripting with the `gum` UI toolkit for the interface and Ansible for the backend installation logic.
 
+[![GitHub](https://img.shields.io/badge/GitHub-bbTwilio%2Ftool--install-blue)](https://github.com/bbTwilio/tool-install)
+
+## Quick Start
+
+```bash
+# Clone and run
+git clone https://github.com/bbTwilio/tool-install.git
+cd tool-install
+./install-tools.sh
+```
+
 ## Features
 
 - **Interactive UI**: Modern terminal UI using `gum` for tool selection
 - **Auto-dependency Management**: Automatically installs required dependencies (Homebrew, gum, Ansible, yq)
 - **Smart Detection**: Detects already installed tools and marks them with ✓
 - **Pre-selection**: Automatically pre-selects uninstalled tools for convenience
-- **Ansible Backend**: Leverages existing Ansible roles for robust installation
+- **Ansible Backend**: Leverages robust Ansible roles for installation
+- **Browser Launch**: Optionally opens tool documentation in browser after installation
 - **Logging**: Comprehensive logging to `/tmp/tool-installer-*.log`
 - **Post-install Instructions**: Provides tool-specific configuration steps after installation
+- **AWS SSO Support**: Configures AWS SSO profiles for seamless cloud access
+- **GitHub SSH Setup**: Automatically configures SSH keys for GitHub access
 
 ## Prerequisites
 
@@ -20,9 +34,9 @@ A lightweight, interactive tool installer for macOS that uses shell scripting wi
 
 ## Installation
 
-1. Clone the repository or download the installer:
+1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/bbTwilio/tool-install.git
 cd tool-install
 ```
 
@@ -63,29 +77,46 @@ The installer is completely interactive and requires no command-line arguments:
 
 4. **Installation**: Ansible runs in the background with a progress spinner
 
-5. **Post-Installation**: Tool-specific configuration instructions are displayed
+5. **Post-Installation**:
+   - Tool-specific configuration instructions are displayed
+   - Optional prompt to open documentation in browser for each installed tool
+   - Documentation URLs are provided for manual access if browser launch fails
 
 ## Available Tools
 
 The installer supports the following tools:
 
-| Tool | Category | Description |
-|------|----------|-------------|
-| AWS CLI | cloud | Amazon Web Services command-line interface |
-| Git | vcs | Distributed version control system |
-| GitHub CLI | vcs | GitHub's official command line tool |
-| Ngrok | networking | Secure tunnels to localhost |
-| Claude Code | ai | Anthropic's official CLI for Claude |
-| Node.js | runtime | JavaScript runtime built on Chrome's V8 engine |
-| VS Code | editor | Source code editor developed by Microsoft |
+| Tool | Category | Description | Ansible Role |
+|------|----------|-------------|--------------|
+| AWS CLI | cloud | Amazon Web Services command-line interface | aws_cli |
+| Git | vcs | Distributed version control system | git |
+| GitHub CLI | vcs | GitHub's official command line tool with SSH setup | github |
+| Ngrok | networking | Secure tunnels to localhost | ngrok |
+| Claude Code | ai | Anthropic's official CLI for Claude | claude |
+| Node.js | runtime | JavaScript runtime built on Chrome's V8 engine | nodejs |
+| VS Code | editor | Source code editor developed by Microsoft | vscode |
+
+### Special Roles
+
+| Role | Purpose |
+|------|---------|
+| aws_configure_sso | Configures AWS SSO profiles for seamless authentication |
+| github | Sets up SSH keys and configures GitHub access |
+| claude | Installs Claude Code CLI with shell integration |
 
 ## Configuration
 
-The installer uses configuration files from `tool-installer/config/`:
+The installer uses configuration files from `config/`:
 
-- `tools.yaml`: Tool definitions and metadata
-- `ansible/playbook.yml`: Main Ansible playbook
-- `ansible/roles/*/`: Individual tool installation roles
+- `config/tools.yaml`: Tool definitions and metadata
+- `config/ansible/playbook.yml`: Main Ansible playbook
+- `config/ansible/roles/*/`: Individual tool installation roles
+
+### Key Configuration Files
+
+- **tools.yaml**: Defines all available tools, their installation methods, and verification commands
+- **playbook.yml**: Orchestrates the installation process using Ansible
+- **Role-specific defaults**: Each role has a `defaults/main.yml` for customizable settings
 
 ## Logging
 
@@ -101,7 +132,7 @@ The log includes:
 
 ### Script fails with "This script requires macOS"
 
-The installer only works on macOS. For other platforms, use the Python-based installer.
+The installer is designed specifically for macOS. Linux and Windows support may be added in future versions.
 
 ### Homebrew installation prompts for password
 
@@ -120,30 +151,78 @@ The script should auto-install gum. If this fails:
 brew install gum
 ```
 
+### AWS SSO Configuration
+
+After installing AWS CLI, you can configure SSO profiles:
+```bash
+aws configure sso
+# Or use the aws_configure_sso Ansible role directly
+```
+
+### GitHub SSH Access
+
+The GitHub role automatically:
+- Generates an SSH key if none exists
+- Configures known_hosts for GitHub
+- Provides instructions for adding the key to your GitHub account
+
 
 ## Development
 
 ### Adding New Tools
 
-1. Add tool definition to `tool-installer/config/tools.yaml`
-2. Create Ansible role in `tool-installer/config/ansible/roles/<tool_name>/`
-3. The installer will automatically detect the new tool
+1. Add tool definition to `config/tools.yaml`
+2. Create Ansible role in `config/ansible/roles/<tool_name>/`
+3. Update `install-tools.sh` if special handling is needed
+4. The installer will automatically detect the new tool
+
+### Ansible Role Structure
+
+Each tool role should follow this structure:
+```
+config/ansible/roles/<tool_name>/
+├── defaults/
+│   └── main.yml    # Default variables
+├── tasks/
+│   └── main.yml    # Installation tasks
+└── templates/       # Optional config templates
+```
+
+### Testing
+
+Run the test scripts to verify functionality:
+```bash
+./test-installer.sh          # Basic tests
+./test-installer-windows.sh  # Comprehensive test suite
+```
 
 ### Debugging
 
-Enable verbose logging by setting the log level in the script:
+Enable verbose logging by setting the debug flag:
 ```bash
 # Edit the script and add after line 14:
 set -x  # Enable bash debug output
 ```
 
-## License
-
-[Your License Here]
-
 ## Contributing
 
-Contributions are welcome! Please submit pull requests with:
-- Tool additions in the YAML configuration
-- Ansible role improvements
-- Bug fixes to the shell script
+Contributions are welcome! Please feel free to submit a Pull Request to the [GitHub repository](https://github.com/bbTwilio/tool-install).
+
+### Areas for Contribution
+
+- Additional tool roles
+- Linux/Windows support
+- Enhanced error handling
+- Documentation improvements
+- Test coverage
+
+## License
+
+This project is open source. See the [LICENSE](LICENSE) file for details.
+
+## Credits
+
+- **gum**: Charm's excellent TUI toolkit ([charmbracelet/gum](https://github.com/charmbracelet/gum))
+- **Ansible**: Red Hat's automation platform
+- **Homebrew**: The missing package manager for macOS
+- Inspired by [Twilio's engineering laptop setup](https://github.com/segmentio/engineering-laptop-setup)
