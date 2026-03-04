@@ -6,6 +6,10 @@
 
 set -euo pipefail
 
+# Version information
+SCRIPT_VERSION="1.2.0"
+SCRIPT_DATE="2024-03-04"
+
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOLS_YAML="${SCRIPT_DIR}/config/tools.yaml"
@@ -386,8 +390,36 @@ dry_run() {
 main() {
     echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo -e "${BLUE}    macOS Development Tools Installer${NC}"
+    echo -e "${BLUE}         Version ${SCRIPT_VERSION} (${SCRIPT_DATE})${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
+
+    # Log version information
+    log_message "Starting macOS Tool Installer v${SCRIPT_VERSION} (${SCRIPT_DATE})"
+    log_message "Script path: $0"
+    log_message "Bash version: ${BASH_VERSION}"
+
+    # Check for help flag
+    if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+        echo "macOS Development Tools Installer v${SCRIPT_VERSION}"
+        echo ""
+        echo "Usage: $0 [OPTIONS]"
+        echo ""
+        echo "Options:"
+        echo "  -h, --help      Show this help message"
+        echo "  -v, --version   Show version information"
+        echo "  -n, --dry-run   Run in dry-run mode (no changes)"
+        echo ""
+        echo "Repository: https://github.com/bbTwilio/tool-install"
+        exit 0
+    fi
+
+    # Check for version flag
+    if [[ "${1:-}" == "--version" ]] || [[ "${1:-}" == "-v" ]]; then
+        echo "Tool Installer version ${SCRIPT_VERSION} (${SCRIPT_DATE})"
+        echo "Bash version: ${BASH_VERSION}"
+        exit 0
+    fi
 
     # Check for dry-run mode
     if [[ "${1:-}" == "--dry-run" ]] || [[ "${1:-}" == "-n" ]]; then
@@ -400,8 +432,6 @@ main() {
         echo -e "${RED}Error: This script requires macOS${NC}"
         exit 1
     fi
-
-    log_message "Starting macOS Tool Installer"
 
     # Check and install dependencies
     echo "Checking dependencies..."

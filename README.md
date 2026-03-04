@@ -59,6 +59,14 @@ The installer is completely interactive and requires no command-line arguments:
 ./install-tools.sh
 ```
 
+### Command Line Options
+
+```bash
+./install-tools.sh --help      # Show help message
+./install-tools.sh --version   # Show version information
+./install-tools.sh --dry-run   # Run without making changes
+```
+
 ### Workflow
 
 1. **Dependency Check**: The script first checks for and installs required dependencies:
