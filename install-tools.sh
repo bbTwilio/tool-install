@@ -187,7 +187,8 @@ load_tools() {
         esac
         TOOL_DOCS+=("$doc_url")
 
-        log_message "Loaded tool: $tool - ${TOOL_NAMES[-1]}"
+        local last_idx=$((${#TOOL_NAMES[@]} - 1))
+        log_message "Loaded tool: $tool - ${TOOL_NAMES[$last_idx]}"
     done
 }
 
