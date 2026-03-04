@@ -5,6 +5,24 @@
 
 set -euo pipefail
 
+# Check bash version (requires bash 4+ for associative arrays)
+if [[ "${BASH_VERSION%%.*}" -lt 4 ]]; then
+    echo "Error: This script requires bash version 4 or higher."
+    echo "Your current bash version is: ${BASH_VERSION}"
+    echo ""
+    echo "On macOS, you can install a newer bash with Homebrew:"
+    echo "  brew install bash"
+    echo ""
+    echo "Then run the script with:"
+    echo "  /usr/local/bin/bash $0"
+    echo "  # or on Apple Silicon Macs:"
+    echo "  /opt/homebrew/bin/bash $0"
+    echo ""
+    echo "Alternatively, use the compatibility launcher:"
+    echo "  ./install-tools-compat.sh"
+    exit 1
+fi
+
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOLS_YAML="${SCRIPT_DIR}/config/tools.yaml"
