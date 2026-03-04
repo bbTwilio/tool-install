@@ -1,0 +1,242 @@
+# macOS Development Tools Configuration
+# This file defines all available tools and their installation methods
+
+tools:
+  aws_cli:
+    name: "AWS CLI"
+    description: "Amazon Web Services command-line interface"
+    command: "aws"
+    version_flag: "--version"
+    category: "cloud"
+    install_methods:
+      - type: ansible
+        role: aws_cli
+      - type: homebrew
+        package: awscli
+    post_install:
+      - type: configure_sso
+        description: "Configure AWS SSO profiles"
+        required: true
+    verification:
+      command: "aws --version"
+      expected_pattern: "aws-cli/"
+
+  git:
+    name: "Git"
+    description: "Distributed version control system"
+    command: "git"
+    version_flag: "--version"
+    category: "vcs"
+    install_methods:
+      - type: ansible
+        role: git
+      - type: homebrew
+        package: git
+    post_install:
+      - type: configure_user
+        description: "Set global user name and email"
+        required: false
+      - type: set_config
+        key: "init.defaultBranch"
+        value: "main"
+        description: "Set default branch name to 'main'"
+    verification:
+      command: "git --version"
+      expected_pattern: "git version"
+
+  github_cli:
+    name: "GitHub CLI (gh)"
+    description: "GitHub's official command line tool"
+    command: "gh"
+    version_flag: "--version"
+    category: "vcs"
+    install_methods:
+      - type: ansible
+        role: github_cli
+      - type: homebrew
+        package: gh
+    post_install:
+      - type: run_command
+        command: "gh auth login"
+        description: "Authenticate with GitHub"
+        interactive: true
+        required: false
+    verification:
+      command: "gh --version"
+      expected_pattern: "gh version"
+
+  ngrok:
+    name: "Ngrok"
+    description: "Secure tunnels to localhost"
+    command: "ngrok"
+    version_flag: "version"
+    category: "networking"
+    install_methods:
+      - type: ansible
+        role: ngrok
+      - type: homebrew
+        package: ngrok
+      - type: homebrew_cask
+        cask: ngrok
+    post_install:
+      - type: edit_config
+        file: "~/.ngrok2/ngrok.yml"
+        add_line: "connect_cas: host"
+        description: "Add CAS connection setting"
+      - type: configure_authtoken
+        description: "Configure ngrok authtoken"
+        required: false
+    verification:
+      command: "ngrok version"
+      expected_pattern: "ngrok version"
+
+  claude_code:
+    name: "Claude Code"
+    description: "Anthropic's official CLI for Claude"
+    command: "claude"
+    version_flag: "--version"
+    category: "ai"
+    install_methods:
+      - type: ansible
+        role: claude_code
+      - type: direct_download
+        url: "https://github.com/anthropics/claude-code/releases/latest"
+        install_path: "/usr/local/bin/claude"
+        checksum_url: "https://github.com/anthropics/claude-code/releases/latest/download/checksums.txt"
+    post_install:
+      - type: run_command
+        command: "claude auth"
+        description: "Authenticate with Claude"
+        interactive: true
+        required: false
+    verification:
+      command: "claude --version"
+      expected_pattern: "claude"
+
+  nodejs:
+    name: "Node.js"
+    description: "JavaScript runtime built on Chrome's V8 engine"
+    command: "node"
+    version_flag: "--version"
+    category: "runtime"
+    install_methods:
+      - type: ansible
+        role: nodejs
+      - type: homebrew
+        package: node
+      - type: nvm
+        version: "lts"
+        description: "Install via Node Version Manager"
+    additional_commands:
+      - command: "npm"
+        description: "Node Package Manager"
+    post_install:
+      - type: set_npm_config
+        key: "prefix"
+        value: "~/.npm-global"
+        description: "Set npm global directory"
+      - type: add_to_path
+        path: "~/.npm-global/bin"
+        description: "Add npm global bin to PATH"
+    verification:
+      command: "node --version"
+      expected_pattern: "v[0-9]+"
+
+  vscode:
+    name: "Visual Studio Code"
+    description: "Source code editor developed by Microsoft"
+    command: "code"
+    version_flag: "--version"
+    category: "editor"
+    install_methods:
+      - type: ansible
+        role: vscode
+      - type: homebrew_cask
+        cask: visual-studio-code
+      - type: direct_download
+        url: "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal"
+        install_path: "/Applications/Visual Studio Code.app"
+    post_install:
+      - type: install_command_line
+        description: "Install 'code' command in PATH"
+        command: "ln -sf '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' /usr/local/bin/code"
+    verification:
+      command: "code --version"
+      expected_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+
+  aws_jit_sso:
+    name: "AWS JIT SSO"
+    description: "Open web page to request Bedrock access through AWS Just-In-Time SSO"
+    command: null  # This is not a tool to install
+    category: "info"
+    type: "information"
+    actions:
+      - type: open_browser
+        url: "https://twilio.okta.com/enduser/resource/catalog/entry/cen4lm8cuXUUwN3eP1d6"
+        description: "Open browser to request Bedrock access"
+      - type: display_message
+        message: |
+          Opening Web Page - AWS JIT SSO
+
+          Your browser will open to the Twilio Okta portal
+          where you can request access to AWS Bedrock.
+
+          Steps:
+          1. Click 'Request Access' for Bedrock role
+          2. Select the appropriate duration
+          3. Wait for approval (usually automatic)
+          4. Return here when complete
+    verification:
+      skip: true  # Nothing to verify for informational items
+
+# Installation profiles - predefined sets of tools
+profiles:
+  essential:
+    name: "Essential Tools"
+    description: "Core development tools everyone needs"
+    tools:
+      - git
+      - github_cli
+      - nodejs
+
+  cloud:
+    name: "Cloud Development"
+    description: "Tools for cloud and AWS development"
+    tools:
+      - aws_cli
+      - ngrok
+      - aws_jit_sso
+
+  full:
+    name: "Full Stack"
+    description: "All available tools"
+    tools:
+      - aws_cli
+      - git
+      - github_cli
+      - ngrok
+      - claude_code
+      - nodejs
+      - vscode
+      - aws_jit_sso
+
+# Global settings
+settings:
+  ansible:
+    inventory: "localhost,"
+    connection: "local"
+    verbosity: 0  # 0-4, higher is more verbose
+
+  homebrew:
+    auto_update: false  # Don't auto-update Homebrew during installations
+    require_sudo: false
+
+  ui:
+    default_profile: null  # No default profile
+    auto_select_uninstalled: true  # Pre-select uninstalled tools
+    show_versions: true  # Show installed versions in UI
+    confirm_install: true  # Ask for confirmation before installing
+
+  logging:
+    file: "tool-installer.log"
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR

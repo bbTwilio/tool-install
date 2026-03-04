@@ -1,0 +1,97 @@
+---
+# macOS Development Tools Installer - Main Ansible Playbook
+# This playbook orchestrates the installation of development tools on macOS
+
+- name: Install Development Tools on macOS
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  become: no  # We'll request sudo per task as needed
+
+  vars:
+    # Tools to install (will be passed from Python)
+    tools_to_install: "{{ selected_tools | default([]) }}"
+
+    # Dry run mode (no actual changes)
+    dry_run: "{{ dry_run_mode | default(false) }}"
+
+    # Homebrew settings
+    homebrew_update: false
+    homebrew_upgrade: false
+
+  pre_tasks:
+    - name: Display installation plan
+      debug:
+        msg: "Will install tools: {{ tools_to_install }}"
+      when: tools_to_install | length > 0
+
+    - name: Check if running on macOS
+      fail:
+        msg: "This playbook is designed for macOS only. Current OS: {{ ansible_facts['os_family'] }}"
+      when: ansible_facts['os_family'] != 'Darwin' and not dry_run
+
+    - name: Check for Homebrew installation
+      command: which brew
+      register: brew_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Homebrew if missing
+      block:
+        - name: Display Homebrew installation message
+          debug:
+            msg: "Homebrew is not installed. It will be installed now."
+
+        - name: Install Homebrew
+          shell: |
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          when: not dry_run
+      when: brew_check.rc != 0
+
+    - name: Update Homebrew
+      homebrew:
+        update_homebrew: yes
+      when:
+        - brew_check.rc == 0
+        - homebrew_update
+        - not dry_run
+
+  tasks:
+    - name: Include tool installation roles
+      include_role:
+        name: "{{ item }}"
+      loop: "{{ tools_to_install }}"
+      when: item != 'aws_jit_sso'  # Skip non-installable items
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ========================================
+          Installation Summary:
+          ----------------------------------------
+          Tools requested: {{ tools_to_install | length }}
+          {% if dry_run %}
+          Mode: DRY RUN (no actual changes made)
+          {% else %}
+          Mode: PRODUCTION
+          {% endif %}
+          ========================================
+
+    - name: Display post-installation instructions
+      debug:
+        msg: |
+          Post-Installation Steps:
+          {% if 'git' in tools_to_install %}
+          - Configure Git: git config --global user.name "Your Name"
+          {% endif %}
+          {% if 'github_cli' in tools_to_install %}
+          - Authenticate GitHub CLI: gh auth login
+          {% endif %}
+          {% if 'ngrok' in tools_to_install %}
+          - Configure Ngrok: ngrok config add-authtoken YOUR_TOKEN
+          {% endif %}
+          {% if 'claude_code' in tools_to_install %}
+          - Authenticate Claude: claude auth
+          {% endif %}
+      when: tools_to_install | length > 0

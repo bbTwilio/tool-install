@@ -1,0 +1,99 @@
+---
+# Ansible role for installing Node.js and npm
+
+- name: Check if Node.js is already installed
+  command: which node
+  register: node_installed
+  changed_when: false
+  failed_when: false
+
+- name: Check if npm is already installed
+  command: which npm
+  register: npm_installed
+  changed_when: false
+  failed_when: false
+
+- name: Get Node.js version if installed
+  command: node --version
+  register: node_version
+  changed_when: false
+  failed_when: false
+  when: node_installed.rc == 0
+
+- name: Get npm version if installed
+  command: npm --version
+  register: npm_version
+  changed_when: false
+  failed_when: false
+  when: npm_installed.rc == 0
+
+- name: Display Node.js status
+  debug:
+    msg: |
+      Node.js: {{ 'Installed - ' + node_version.stdout if node_installed.rc == 0 else 'Not installed' }}
+      npm: {{ 'Installed - v' + npm_version.stdout if npm_installed.rc == 0 else 'Not installed' }}
+
+- name: Install Node.js via Homebrew
+  homebrew:
+    name: node
+    state: present
+  when:
+    - node_installed.rc != 0
+    - not dry_run | default(false)
+    - ansible_facts['os_family'] == 'Darwin'
+
+- name: Simulate Node.js installation (dry run)
+  debug:
+    msg: "Would install Node.js via Homebrew"
+  when:
+    - node_installed.rc != 0
+    - dry_run | default(false)
+
+- name: Create npm global directory
+  file:
+    path: "{{ ansible_env.HOME }}/.npm-global"
+    state: directory
+    mode: '0755'
+  when: not dry_run | default(false)
+
+- name: Configure npm global directory
+  command: npm config set prefix "{{ ansible_env.HOME }}/.npm-global"
+  when:
+    - not dry_run | default(false)
+    - node_installed.rc == 0 or not dry_run
+
+- name: Check if npm global bin is in PATH
+  shell: echo $PATH | grep -q "{{ ansible_env.HOME }}/.npm-global/bin"
+  register: npm_in_path
+  changed_when: false
+  failed_when: false
+
+- name: Display PATH configuration instructions
+  debug:
+    msg: |
+      ========================================
+      Node.js Post-Installation Setup:
+      ========================================
+
+      {% if npm_in_path.rc != 0 %}
+      Add npm global bin to your PATH by adding this to your shell profile:
+
+      For bash (~/.bash_profile or ~/.bashrc):
+        export PATH="{{ ansible_env.HOME }}/.npm-global/bin:$PATH"
+
+      For zsh (~/.zshrc):
+        export PATH="{{ ansible_env.HOME }}/.npm-global/bin:$PATH"
+
+      Then reload your shell configuration:
+        source ~/.bash_profile  # or ~/.zshrc
+      {% endif %}
+
+      Useful npm global packages to consider:
+        npm install -g typescript
+        npm install -g eslint
+        npm install -g prettier
+        npm install -g nodemon
+
+      Node.js version: {{ node_version.stdout | default('Will be installed') }}
+      npm version: {{ npm_version.stdout | default('Will be installed') }}
+  when: show_instructions | default(true)
