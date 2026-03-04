@@ -1,0 +1,76 @@
+---
+# Claude Code CLI installation tasks
+
+- name: Check if Claude Code is already installed
+  ansible.builtin.command: claude --version
+  register: claude_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Install Claude Code CLI
+  when: claude_version_check.rc != 0
+  block:
+    - name: Create Claude downloads directory
+      ansible.builtin.file:
+        path: "{{ claude_downloads_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Determine platform
+      ansible.builtin.set_fact:
+        claude_os: '{{ "darwin" if ansible_facts["os_family"] == "Darwin" else "linux" }}'
+        claude_arch: '{{ "arm64" if ansible_facts["architecture"] == "arm64" else "x64" }}'
+
+    - name: Set platform string
+      ansible.builtin.set_fact:
+        claude_version: "{{ claude_manifest.version }}"
+        claude_platform: "{{ claude_os }}-{{ claude_arch }}"
+
+    - name: Download Claude binary
+      ansible.builtin.get_url:
+        url: "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ claude_version }}/{{ claude_platform }}/claude"
+        dest: "{{ claude_downloads_dir }}/claude-{{ claude_version }}-{{ claude_platform }}"
+        mode: '0755'
+        checksum: "sha256:{{ claude_manifest.platforms[claude_platform].checksum }}"
+      register: claude_binary_download
+
+    - name: Install Claude Code and set up shell integration
+      when: claude_binary_download is succeeded
+      block:
+        - name: Run Claude install command
+          ansible.builtin.command: "{{ claude_downloads_dir }}/claude-{{ claude_version }}-{{ claude_platform }} install"
+          register: claude_install_result
+
+        - name: Clean up downloaded binary
+          ansible.builtin.file:
+            path: "{{ claude_downloads_dir }}/claude-{{ claude_version }}-{{ claude_platform }}"
+            state: absent
+
+- name: Ensure claude binary is in PATH
+  block:
+    - name: Add ~/.local/bin to .zshenv
+      ansible.builtin.blockinfile:
+        path: '{{ ansible_facts["env"]["HOME"] }}/.zshenv'
+        create: yes
+        marker: "# {mark} CLAUDE CODE PATH"
+        block: |
+          export PATH="$PATH:{{ ansible_facts["env"]["HOME"] }}/.local/bin"
+
+    - name: Check if .bash_profile exists
+      ansible.builtin.stat:
+        path: '{{ ansible_facts["env"]["HOME"] }}/.bash_profile'
+      register: bash_profile
+
+    - name: Add ~/.local/bin to .bash_profile if it exists
+      ansible.builtin.blockinfile:
+        path: '{{ bash_profile.stat.path }}'
+        marker: "# {mark} CLAUDE CODE PATH"
+        block: |
+          export PATH="$PATH:{{ ansible_facts["env"]["HOME"] }}/.local/bin"
+      when: bash_profile.stat.exists
+
+- name: Verify Claude installation
+  ansible.builtin.command: claude --version
+  register: claude_verify
+  changed_when: false
+  failed_when: claude_verify.rc != 0

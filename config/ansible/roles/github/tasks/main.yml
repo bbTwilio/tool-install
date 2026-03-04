@@ -1,0 +1,114 @@
+---
+# GitHub SSH configuration tasks
+
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: '{{ ansible_env.HOME }}/.ssh'
+    state: directory
+    mode: '0700'
+
+- name: Add GitHub to known_hosts
+  ansible.builtin.known_hosts:
+    name: github.com
+    key: "{{ item.value }}"
+    state: present
+  loop: "{{ github_host_keys | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Check if SSH is already authorized with GitHub
+  ansible.builtin.shell: ssh -T git@github.com 2>&1 || true
+  register: ssh_check_github
+  changed_when: false
+  check_mode: no
+
+- name: Check if SSH to GitHub succeeded
+  ansible.builtin.set_fact:
+    ssh_github_works: '{{ "successfully authenticated" in ssh_check_github.stderr }}'
+
+- name: Configure GitHub SSH access
+  when: not ssh_github_works
+  block:
+    - name: Check for SSH keys
+      ansible.builtin.stat:
+        path: '{{ ansible_env.HOME }}/.ssh/{{ item }}'
+      register: ssh_keys
+      loop:
+        - id_rsa.pub
+        - id_ed25519.pub
+        - id_ecdsa.pub
+
+    - name: Find existing SSH key
+      ansible.builtin.set_fact:
+        existing_ssh_key: "{{ ssh_keys.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | first | default('') }}"
+
+    - name: Generate SSH key if none exists
+      when: existing_ssh_key == ''
+      block:
+        - name: Generate new SSH key
+          ansible.builtin.openssh_keypair:
+            path: '{{ ansible_env.HOME }}/.ssh/id_ed25519'
+            type: ed25519
+            comment: '{{ ansible_env.USER }}@{{ ansible_hostname }}'
+          register: new_ssh_key
+
+        - name: Set existing_ssh_key to newly generated key
+          ansible.builtin.set_fact:
+            existing_ssh_key: 'id_ed25519.pub'
+
+    - name: Check if GitHub CLI is installed
+      ansible.builtin.command: gh --version
+      register: gh_version_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install GitHub CLI via Homebrew
+      community.general.homebrew:
+        name: gh
+        state: present
+      when: gh_version_check.rc != 0
+
+    - name: Check gh auth status
+      ansible.builtin.shell: gh auth status
+      register: gh_auth_status
+      ignore_errors: true
+      failed_when: false
+
+    - name: Display SSH key setup instructions
+      when: gh_auth_status.rc != 0
+      ansible.builtin.debug:
+        msg: |
+
+          ========================================
+          GitHub SSH Setup Required
+          ========================================
+
+          Please complete the following steps:
+
+          1. Run: gh auth login --web --scopes admin:public_key
+          2. Follow the browser prompts to authenticate
+          3. Your SSH key will be automatically added to GitHub
+
+          Your SSH public key is located at:
+          {{ ansible_env.HOME }}/.ssh/{{ existing_ssh_key }}
+
+          Alternatively, manually add your SSH key at:
+          https://github.com/settings/keys
+
+          ========================================
+
+- name: Configure git to use SSH for GitHub
+  community.general.git_config:
+    name: 'url.ssh://git@github.com/.insteadOf'
+    value: 'https://github.com/'
+    scope: global
+
+- name: Verify GitHub access
+  ansible.builtin.shell: ssh -T git@github.com 2>&1 || true
+  register: final_ssh_check
+  changed_when: false
+  check_mode: no
+
+- name: Report GitHub SSH status
+  ansible.builtin.debug:
+    msg: "GitHub SSH access: {{ 'configured successfully' if 'successfully authenticated' in final_ssh_check.stderr else 'needs manual configuration' }}"

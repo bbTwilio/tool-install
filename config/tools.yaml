@@ -52,7 +52,7 @@ tools:
     category: "vcs"
     install_methods:
       - type: ansible
-        role: github_cli
+        role: github
       - type: homebrew
         package: gh
     post_install:
@@ -98,7 +98,7 @@ tools:
     category: "ai"
     install_methods:
       - type: ansible
-        role: claude_code
+        role: claude
       - type: direct_download
         url: "https://github.com/anthropics/claude-code/releases/latest"
         install_path: "/usr/local/bin/claude"

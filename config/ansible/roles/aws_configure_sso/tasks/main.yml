@@ -1,0 +1,86 @@
+---
+# AWS SSO Configuration Tasks
+
+- name: Ensure AWS config directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.aws"
+    state: directory
+    mode: '0700'
+
+- name: Check if AWS config file exists
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.aws/config"
+  register: aws_config_file
+
+- name: Create AWS config file if it doesn't exist
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.aws/config"
+    state: touch
+    mode: '0600'
+  when: not aws_config_file.stat.exists
+
+- name: Configure AWS SSO Profile {{ aws_sso_profile_name }}
+  community.general.ini_file:
+    path: "{{ ansible_env.HOME }}/.aws/config"
+    section: "profile {{ aws_sso_profile_name }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: '0600'
+  loop:
+    - { option: "sso_session", value: "{{ aws_sso_session.name }}" }
+    - { option: "sso_account_id", value: "{{ aws_sso_account_id }}" }
+    - { option: "sso_role_name", value: "{{ aws_sso_role_name }}" }
+    - { option: "region", value: "{{ aws_sso_region }}" }
+
+- name: Configure AWS SSO Session {{ aws_sso_session.name }}
+  community.general.ini_file:
+    path: "{{ ansible_env.HOME }}/.aws/config"
+    section: "sso-session {{ aws_sso_session.name }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: '0600'
+  loop:
+    - { option: "sso_start_url", value: "{{ aws_sso_session.sso_start_url }}" }
+    - { option: "sso_region", value: "{{ aws_sso_session.sso_region }}" }
+    - { option: "sso_registration_scopes", value: "{{ aws_sso_session.sso_registration_scopes }}" }
+
+- name: Check if AWS CLI is installed
+  ansible.builtin.command: aws --version
+  register: aws_cli_check
+  failed_when: false
+  changed_when: false
+
+- name: Display AWS SSO configuration status
+  ansible.builtin.debug:
+    msg: |
+
+      ========================================
+      AWS SSO Configuration Complete
+      ========================================
+
+      Profile Name: {{ aws_sso_profile_name }}
+      SSO Session: {{ aws_sso_session.name }}
+      SSO Start URL: {{ aws_sso_session.sso_start_url }}
+      Account ID: {{ aws_sso_account_id }}
+      Role: {{ aws_sso_role_name }}
+      Region: {{ aws_sso_region }}
+
+      To login, run:
+      aws sso login --profile {{ aws_sso_profile_name }}
+
+      To use this profile:
+      export AWS_PROFILE={{ aws_sso_profile_name }}
+
+      ========================================
+
+- name: Check SSO login status
+  ansible.builtin.shell: aws sts get-caller-identity --profile {{ aws_sso_profile_name }} 2>&1
+  register: sso_login_check
+  failed_when: false
+  changed_when: false
+  when: aws_cli_check.rc == 0
+
+- name: Report SSO login status
+  ansible.builtin.debug:
+    msg: "AWS SSO Status: {{ 'logged in' if sso_login_check.rc == 0 else 'not logged in - run: aws sso login --profile ' + aws_sso_profile_name }}"
+  when: aws_cli_check.rc == 0

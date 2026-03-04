@@ -1,0 +1,24 @@
+---
+# AWS SSO Configuration Defaults
+
+# Default AWS SSO profile name
+aws_sso_profile_name: "{{ aws_profile | default('default') }}"
+
+# AWS SSO account configuration
+aws_sso_account_id: "{{ aws_account_id | default('123456789012') }}"
+aws_sso_role_name: "{{ aws_role_name | default('PowerUserAccess') }}"
+aws_sso_region: "{{ aws_region | default('us-west-2') }}"
+
+# AWS SSO Session Configuration
+aws_sso_session:
+  name: "{{ aws_sso_session_name | default('my-sso-session') }}"
+  sso_start_url: "{{ aws_sso_start_url | default('https://my-sso-portal.awsapps.com/start') }}"
+  sso_region: "{{ aws_sso_session_region | default('us-east-1') }}"
+  sso_registration_scopes: "{{ aws_sso_scopes | default('sso:account:access') }}"
+
+# Note: For Twilio employees, use these values:
+# aws_sso_session:
+#   name: "twilio-identity-center"
+#   sso_start_url: "https://twilio-us-east-1.awsapps.com/start"
+#   sso_region: "us-east-1"
+#   sso_registration_scopes: "sso:account:access"
