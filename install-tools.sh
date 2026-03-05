@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.2.0"
+SCRIPT_VERSION="1.2.1"
 SCRIPT_DATE="2024-03-04"
 
 # Configuration paths
@@ -97,7 +97,7 @@ check_and_install_dependencies() {
     if ! command -v brew &>/dev/null; then
         echo "Homebrew is not installed."
         if gum confirm "Install Homebrew?"; then
-            gum spin --spinner dots --title "Installing Homebrew..." -- \
+            gum spin --spinner dot --title "Installing Homebrew..." -- \
                 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
             # Add Homebrew to PATH for this session (for Apple Silicon Macs)
@@ -281,7 +281,7 @@ install_tools() {
     local tools_json=$(printf '%s\n' "${tools_to_install[@]}" | jq -R . | jq -s .)
 
     # Run Ansible playbook with spinner
-    gum spin --spinner dots --title "Running Ansible playbook..." -- \
+    gum spin --spinner dot --title "Running Ansible playbook..." -- \
         ansible-playbook "$PLAYBOOK" \
         -e "selected_tools=$tools_json" \
         -vv >> "$LOG_FILE" 2>&1
