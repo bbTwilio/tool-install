@@ -61,7 +61,7 @@
       include_role:
         name: "{{ item }}"
       loop: "{{ tools_to_install }}"
-      when: item != 'aws_jit_sso'  # Skip non-installable items
+      # All roles are now properly defined and can be included
 
   post_tasks:
     - name: Display completion message

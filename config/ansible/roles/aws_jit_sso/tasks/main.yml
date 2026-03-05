@@ -1,0 +1,110 @@
+---
+# Ansible role for AWS JIT SSO configuration on macOS
+# Note: AWS JIT SSO is a service/configuration, not an installable tool
+
+- name: Check if AWS CLI is installed
+  command: which aws
+  register: aws_cli_check
+  changed_when: false
+  failed_when: false
+
+- name: Display AWS CLI requirement
+  debug:
+    msg: "AWS CLI is required for AWS JIT SSO. Please install AWS CLI first."
+  when: aws_cli_check.rc != 0
+
+- name: Check for existing AWS SSO configuration
+  stat:
+    path: "{{ ansible_env.HOME }}/.aws/config"
+  register: aws_config
+
+- name: Display AWS JIT SSO configuration instructions
+  debug:
+    msg: |
+      ========================================
+      AWS JIT SSO Configuration:
+      ========================================
+
+      AWS JIT (Just-In-Time) SSO provides temporary access to AWS resources.
+
+      Prerequisites:
+      - AWS CLI must be installed ({{ 'INSTALLED' if aws_cli_check.rc == 0 else 'NOT INSTALLED - Please install first' }})
+      - Valid AWS SSO endpoint URL
+      - Appropriate IAM permissions
+
+      Configuration Steps:
+      1. Configure AWS SSO profile:
+         aws configure sso
+
+      2. When prompted, provide:
+         - SSO start URL (e.g., https://your-org.awsapps.com/start)
+         - SSO Region (e.g., us-east-1)
+         - Choose your AWS account and role
+         - Set a profile name (e.g., jit-dev, jit-prod)
+
+      3. Login to AWS SSO:
+         aws sso login --profile your-profile-name
+
+      4. Use the profile for AWS operations:
+         aws s3 ls --profile your-profile-name
+         OR
+         export AWS_PROFILE=your-profile-name
+
+      Token Management:
+      - SSO tokens expire after a configured duration
+      - Re-authenticate with: aws sso login --profile your-profile-name
+      - Logout when done: aws sso logout
+
+      Best Practices:
+      - Use different profiles for different environments (dev/staging/prod)
+      - Set token expiration appropriately for your security requirements
+      - Always logout when finished with sensitive operations
+
+      Configuration file location: ~/.aws/config
+      Credentials cache: ~/.aws/sso/cache/
+
+      For more information:
+      https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
+
+- name: Create example SSO configuration if AWS config doesn't exist
+  copy:
+    dest: "{{ ansible_env.HOME }}/.aws/config.sso.example"
+    content: |
+      # Example AWS SSO Configuration
+      # Copy relevant sections to ~/.aws/config and modify as needed
+
+      [profile jit-dev]
+      sso_start_url = https://your-org.awsapps.com/start
+      sso_region = us-east-1
+      sso_account_id = 123456789012
+      sso_role_name = DeveloperAccess
+      region = us-east-1
+      output = json
+
+      [profile jit-staging]
+      sso_start_url = https://your-org.awsapps.com/start
+      sso_region = us-east-1
+      sso_account_id = 234567890123
+      sso_role_name = DeveloperAccess
+      region = us-east-1
+      output = json
+
+      [profile jit-prod]
+      sso_start_url = https://your-org.awsapps.com/start
+      sso_region = us-east-1
+      sso_account_id = 345678901234
+      sso_role_name = ReadOnlyAccess
+      region = us-east-1
+      output = json
+    mode: '0600'
+  when:
+    - not aws_config.stat.exists
+    - not dry_run | default(false)
+
+- name: Note about AWS JIT SSO
+  debug:
+    msg: |
+      Note: AWS JIT SSO is a configuration service, not an installable tool.
+      The configuration instructions have been displayed above.
+      An example configuration has been created at ~/.aws/config.sso.example
+  when: not aws_config.stat.exists

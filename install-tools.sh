@@ -292,8 +292,8 @@ install_tools() {
     # Log the JSON being passed to Ansible for debugging
     log_message "Passing to Ansible: $extra_vars"
 
-    # Run Ansible playbook with spinner
-    gum spin --spinner dot --title "Running Ansible playbook..." -- \
+    # Run Ansible playbook with spinner (set ANSIBLE_CONFIG to use our config file)
+    ANSIBLE_CONFIG="${ANSIBLE_DIR}/ansible.cfg" gum spin --spinner dot --title "Running Ansible playbook..." -- \
         ansible-playbook "$PLAYBOOK" \
         -e "$extra_vars" \
         -vv >> "$LOG_FILE" 2>&1
