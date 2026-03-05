@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.2.1"
+SCRIPT_VERSION="1.2.2"
 SCRIPT_DATE="2024-03-04"
 
 # Configuration paths
@@ -277,13 +277,25 @@ install_tools() {
     echo -e "${BLUE}Installing selected tools using Ansible...${NC}"
     log_message "Starting Ansible installation for: ${tools_to_install[*]}"
 
-    # Create tools string for Ansible
-    local tools_json=$(printf '%s\n' "${tools_to_install[@]}" | jq -R . | jq -s .)
+    # Create tools JSON array for Ansible
+    local tools_json
+    if [[ ${#tools_to_install[@]} -eq 0 ]]; then
+        tools_json="[]"
+    else
+        # Create proper JSON array
+        tools_json=$(printf '%s\n' "${tools_to_install[@]}" | jq -R . | jq -s .)
+    fi
+
+    # Create the extra vars JSON object
+    local extra_vars="{\"selected_tools\": $tools_json}"
+
+    # Log the JSON being passed to Ansible for debugging
+    log_message "Passing to Ansible: $extra_vars"
 
     # Run Ansible playbook with spinner
     gum spin --spinner dot --title "Running Ansible playbook..." -- \
         ansible-playbook "$PLAYBOOK" \
-        -e "selected_tools=$tools_json" \
+        -e "$extra_vars" \
         -vv >> "$LOG_FILE" 2>&1
 
     local result=$?
