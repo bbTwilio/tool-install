@@ -19,19 +19,24 @@
     msg: "AWS CLI is already installed: {{ aws_version.stdout | default('Version unknown') }}"
   when: aws_installed.rc == 0
 
-- name: Install AWS CLI via Homebrew
+- name: Install/Upgrade AWS CLI via Homebrew
   homebrew:
     name: awscli
-    state: present
+    state: latest
   when:
-    - aws_installed.rc != 0
     - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
 
-- name: Simulate AWS CLI installation (dry run)
-  debug:
-    msg: "Would install AWS CLI via Homebrew"
+- name: Force reinstall AWS CLI via Homebrew
+  shell: brew reinstall awscli
   when:
-    - aws_installed.rc != 0
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+
+- name: Simulate AWS CLI installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} AWS CLI via Homebrew"
+  when:
     - dry_run | default(false)
 
 - name: Create AWS config directory
