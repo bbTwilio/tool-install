@@ -1,0 +1,165 @@
+---
+# Tasks for configuring Zscaler certificate with AWS CLI
+
+- name: Create certificate directory
+  file:
+    path: "{{ ansible_env.HOME }}/cert"
+    state: directory
+    mode: '0755'
+
+- name: Search for Zscaler Root CA in system keychain
+  shell: |
+    security find-certificate -c "Zscaler Root CA" -p /System/Library/Keychains/SystemRootCertificates.keychain 2>/dev/null || \
+    security find-certificate -c "Zscaler Root CA" -p /Library/Keychains/System.keychain 2>/dev/null || \
+    security find-certificate -c "Zscaler Root CA" -p ~/Library/Keychains/login.keychain-db 2>/dev/null || \
+    echo "NOT_FOUND"
+  register: zscaler_cert_content
+  changed_when: false
+  failed_when: false
+
+- name: Export Zscaler certificate to PEM file
+  copy:
+    content: "{{ zscaler_cert_content.stdout }}"
+    dest: "{{ zscaler_cert_path }}"
+    mode: '0644'
+  when:
+    - zscaler_cert_content.stdout != "NOT_FOUND"
+    - zscaler_cert_content.stdout != ""
+
+- name: Check if Zscaler certificate was exported successfully
+  stat:
+    path: "{{ zscaler_cert_path }}"
+  register: zscaler_cert_file
+
+- name: Display certificate export status
+  debug:
+    msg: |
+      {% if zscaler_cert_file.stat.exists %}
+      ✓ Zscaler Root CA certificate exported successfully to {{ zscaler_cert_path }}
+      {% else %}
+      ⚠ Zscaler Root CA certificate not found in system keychain
+      {% endif %}
+
+- name: Validate certificate format
+  command: openssl x509 -in {{ zscaler_cert_path }} -text -noout
+  register: cert_validation
+  changed_when: false
+  failed_when: false
+  when: zscaler_cert_file.stat.exists
+
+- name: Display certificate validation error
+  fail:
+    msg: |
+      Certificate validation failed!
+      The file at {{ zscaler_cert_path }} is not a valid PEM certificate.
+      Please ensure you exported the certificate in PEM format.
+      Error: {{ cert_validation.stderr }}
+  when:
+    - zscaler_cert_file.stat.exists
+    - cert_validation.rc != 0
+
+- name: Configure AWS_CA_BUNDLE in .zshrc
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    marker: "# {mark} AWS CLI ZSCALER CERTIFICATE"
+    block: |
+      # AWS CLI Certificate Bundle for Zscaler
+      export {{ aws_ca_bundle_var }}="{{ zscaler_cert_path }}"
+    create: yes
+    mode: '0644'
+  when:
+    - zscaler_cert_file.stat.exists
+    - cert_validation.rc == 0
+    - not dry_run | default(false)
+
+- name: Configure AWS_CA_BUNDLE in .zshenv
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.zshenv"
+    marker: "# {mark} AWS CLI ZSCALER CERTIFICATE"
+    block: |
+      # AWS CLI Certificate Bundle for Zscaler
+      export {{ aws_ca_bundle_var }}="{{ zscaler_cert_path }}"
+    create: yes
+    mode: '0644'
+  when:
+    - zscaler_cert_file.stat.exists
+    - cert_validation.rc == 0
+    - not dry_run | default(false)
+
+- name: Check if .bash_profile exists
+  stat:
+    path: "{{ ansible_env.HOME }}/.bash_profile"
+  register: bash_profile
+
+- name: Configure AWS_CA_BUNDLE in .bash_profile
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.bash_profile"
+    marker: "# {mark} AWS CLI ZSCALER CERTIFICATE"
+    block: |
+      # AWS CLI Certificate Bundle for Zscaler
+      export {{ aws_ca_bundle_var }}="{{ zscaler_cert_path }}"
+    mode: '0644'
+  when:
+    - bash_profile.stat.exists
+    - zscaler_cert_file.stat.exists
+    - cert_validation.rc == 0
+    - not dry_run | default(false)
+
+- name: Test AWS CLI connectivity
+  shell: |
+    export {{ aws_ca_bundle_var }}="{{ zscaler_cert_path }}"
+    aws sts get-caller-identity
+  register: aws_test
+  changed_when: false
+  failed_when: false
+  when:
+    - zscaler_cert_file.stat.exists
+    - cert_validation.rc == 0
+    - not dry_run | default(false)
+
+- name: Display configuration status
+  debug:
+    msg: |
+      ========================================
+      ZSCALER CERTIFICATE CONFIGURATION STATUS
+      ========================================
+
+      Certificate found: {{ 'Yes' if zscaler_cert_file.stat.exists else 'No' }}
+      Certificate valid: {{ 'Yes' if (zscaler_cert_file.stat.exists and cert_validation.rc == 0) else 'No' }}
+      Shell configuration updated:
+        - .zshrc: {{ 'Yes' if zscaler_cert_file.stat.exists else 'No' }}
+        - .zshenv: {{ 'Yes' if zscaler_cert_file.stat.exists else 'No' }}
+        - .bash_profile: {{ 'Yes' if (bash_profile.stat.exists and zscaler_cert_file.stat.exists) else 'No' }}
+
+      AWS CLI connectivity test: {{ 'Success' if (aws_test.rc | default(1) == 0) else 'Failed' }}
+
+      {% if zscaler_cert_file.stat.exists and cert_validation.rc == 0 %}
+      Next steps:
+      1. Reload your shell: source ~/.zshrc
+      2. Verify environment: echo $AWS_CA_BUNDLE
+      3. Test AWS CLI: aws s3 ls
+      {% endif %}
+
+      ========================================
+  when: not dry_run | default(false)
+
+- name: Display dry run information
+  debug:
+    msg: |
+      ========================================
+      DRY RUN: Zscaler Certificate Configuration
+      ========================================
+
+      Would perform the following actions:
+      1. Check for certificate at {{ zscaler_cert_path }}
+      2. Create ~/cert directory if needed
+      3. Validate certificate format with openssl
+      4. Add AWS_CA_BUNDLE export to:
+         - ~/.zshrc
+         - ~/.zshenv
+         - ~/.bash_profile (if exists)
+      5. Test AWS CLI connectivity
+
+      No actual changes made in dry run mode.
+      ========================================
+  when: dry_run | default(false)

@@ -1,0 +1,10 @@
+---
+# AWS CLI Role Default Variables
+
+# Zscaler certificate configuration
+configure_zscaler_cert: true  # Automatically configure Zscaler certificate
+zscaler_cert_path: "{{ ansible_env.HOME }}/cert/zscaler_root.pem"
+zscaler_cert_name: "Zscaler Intermediate Root CA"
+
+# Environment variable configuration
+aws_ca_bundle_var: "AWS_CA_BUNDLE"

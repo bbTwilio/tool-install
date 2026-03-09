@@ -90,3 +90,27 @@
       For more information:
       https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
   when: aws_installed.rc != 0 or show_instructions | default(false)
+
+- name: Configure Zscaler certificate for AWS CLI
+  include_tasks: zscaler_cert.yml
+  when:
+    - configure_zscaler_cert | default(true)  # Enable by default
+    - not dry_run | default(false)
+
+- name: Reload shell configuration if certificate was configured
+  debug:
+    msg: |
+      ========================================
+      Zscaler Certificate Configuration Complete
+      ========================================
+
+      The AWS_CA_BUNDLE has been configured in your shell profiles.
+
+      To apply the changes immediately, run:
+        source ~/.zshrc
+
+      Or start a new terminal session.
+      ========================================
+  when:
+    - configure_zscaler_cert | default(true)
+    - not dry_run | default(false)
