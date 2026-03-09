@@ -1,0 +1,22 @@
+# Template for adding reinstall support to any role
+# Replace TOOL_NAME and BREW_PACKAGE with actual values
+
+- name: Install/Upgrade TOOL_NAME via Homebrew
+  homebrew:
+    name: BREW_PACKAGE
+    state: latest
+  when:
+    - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
+
+- name: Force reinstall TOOL_NAME via Homebrew
+  shell: brew reinstall BREW_PACKAGE
+  when:
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+
+- name: Simulate TOOL_NAME installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} TOOL_NAME via Homebrew"
+  when:
+    - dry_run | default(false)
