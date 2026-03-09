@@ -230,9 +230,10 @@ build_tool_list() {
         local display="[$category] $name - $desc"
 
         if [[ "${TOOL_INSTALLED[$i]}" == "1" ]]; then
-            display="✓ $display"
+            # Show installed tools with checkmark but still selectable
+            display="✓ $display (installed)"
         else
-            # Pre-select uninstalled tools
+            # Pre-select uninstalled tools by default
             preselected+=("$display")
         fi
 
@@ -241,7 +242,8 @@ build_tool_list() {
 
     # Output for gum with pre-selected items
     printf "%s\n" "${tool_list[@]}" | \
-        gum choose --no-limit --header "Select tools to install (Space to toggle, Enter to confirm):" \
+        gum choose --no-limit \
+                   --header "Select tools to install/re-install (Space to toggle, Enter to confirm):" \
                    --selected="${preselected[@]}"
 }
 
@@ -466,21 +468,28 @@ main() {
         exit 0
     fi
 
-    # Parse selected tools
+    # Parse selected tools (both installed and uninstalled)
     tools_to_install=()
+    installed_tools_selected=()
     while IFS= read -r item; do
         # Skip empty lines
         [[ -z "$item" ]] && continue
 
-        # Skip already installed tools (those with checkmarks)
+        # Check if this is an installed tool
+        local is_installed=false
         if [[ "$item" == "✓ "* ]]; then
-            continue
+            is_installed=true
+            item="${item#✓ }"  # Remove checkmark prefix
+            item="${item% (installed)}"  # Remove (installed) suffix
         fi
 
         # Extract tool ID from display string
-        tool_id=$(extract_tool_id "$item")
+        local tool_id=$(extract_tool_id "$item")
         if [[ -n "$tool_id" ]]; then
             tools_to_install+=("$tool_id")
+            if [[ "$is_installed" == true ]]; then
+                installed_tools_selected+=("$tool_id")
+            fi
         fi
     done <<< "$selected_items"
 
