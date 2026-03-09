@@ -352,6 +352,18 @@ install_tools() {
     # Build tool actions JSON
     local tools_json=$(build_tool_actions)
 
+    # Ensure tools_json is valid, default to empty array if not
+    if [[ -z "$tools_json" ]] || [[ "$tools_json" == "" ]]; then
+        log_message "Warning: build_tool_actions returned empty, using default empty array"
+        tools_json="[]"
+    fi
+
+    # Additional validation - ensure it starts with [ and ends with ]
+    if [[ ! "$tools_json" =~ ^\[.*\]$ ]]; then
+        log_message "Warning: Invalid JSON from build_tool_actions: $tools_json"
+        tools_json="[]"
+    fi
+
     # Create the extra vars JSON object
     local extra_vars="{\"selected_tools\": $tools_json}"
 
