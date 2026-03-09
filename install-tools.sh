@@ -493,6 +493,55 @@ main() {
         fi
     done <<< "$selected_items"
 
+    # Function to prompt for reinstall action
+    prompt_reinstall_action() {
+        local tool_id="$1"
+        local idx=$(get_tool_index "$tool_id")
+        local tool_name="${TOOL_NAMES[$idx]}"
+
+        echo ""
+        echo "Tool '$tool_name' is already installed."
+        local action=$(gum choose \
+            --header "Choose action for $tool_name:" \
+            "Upgrade to latest version" \
+            "Force reinstall (remove and reinstall)")
+
+        if [[ "$action" == "Upgrade to latest version" ]]; then
+            echo "upgrade"
+        else
+            echo "reinstall"
+        fi
+    }
+
+    # Function to build tool action array for Ansible
+    build_tool_actions() {
+        local json_array="["
+        local first=true
+
+        for tool in "${tools_to_install[@]}"; do
+            local action="install"
+
+            # Check if this tool is installed
+            for installed in "${installed_tools_selected[@]}"; do
+                if [[ "$tool" == "$installed" ]]; then
+                    action=$(prompt_reinstall_action "$tool")
+                    break
+                fi
+            done
+
+            if [[ "$first" == true ]]; then
+                first=false
+            else
+                json_array+=","
+            fi
+
+            json_array+="{\"name\":\"$tool\",\"action\":\"$action\"}"
+        done
+
+        json_array+="]"
+        echo "$json_array"
+    }
+
     # Confirm selection
     if [[ ${#tools_to_install[@]} -gt 0 ]]; then
         echo ""
