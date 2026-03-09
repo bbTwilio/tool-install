@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.3.0"
+SCRIPT_VERSION="1.4.0"
 SCRIPT_DATE="2026-03-09"
 
 # Configuration paths
