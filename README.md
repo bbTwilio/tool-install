@@ -20,6 +20,7 @@ chmod +x install-tools.sh
 - **Auto-dependency Management**: Automatically installs required dependencies (Homebrew, gum, Ansible, yq)
 - **Smart Detection**: Detects already installed tools and marks them with ✓
 - **Pre-selection**: Automatically pre-selects uninstalled tools for convenience
+- **Re-installation Support**: Installed tools can be upgraded to latest version or force-reinstalled
 - **Ansible Backend**: Leverages robust Ansible roles for installation
 - **Browser Launch**: Optionally opens tool documentation in browser after installation
 - **Logging**: Comprehensive logging to `/tmp/tool-installer-*.log`
@@ -77,10 +78,13 @@ The installer is completely interactive and requires no command-line arguments:
 
 2. **Tool Selection**: An interactive multi-select list shows all available tools:
    - Tools are categorized (cloud, vcs, runtime, etc.)
-   - Installed tools are marked with ✓
+   - Installed tools are marked with ✓ and "(installed)" suffix
    - Uninstalled tools are pre-selected by default
    - Use `Space` to toggle selection
    - Use `Enter` to confirm
+   - For installed tools that are selected:
+     - Choose "Upgrade to latest version" to update
+     - Choose "Force reinstall" to remove and reinstall (fixes corruption)
 
 3. **Confirmation**: Review selected tools and confirm installation
 
@@ -90,6 +94,33 @@ The installer is completely interactive and requires no command-line arguments:
    - Tool-specific configuration instructions are displayed
    - Optional prompt to open documentation in browser for each installed tool
    - Documentation URLs are provided for manual access if browser launch fails
+
+## Re-installation and Upgrades
+
+The installer supports re-installing and upgrading already installed tools:
+
+### When to Use Each Option
+
+**Upgrade to latest version**
+- Updates the tool to the newest available version
+- Preserves configuration and settings
+- Recommended for routine updates
+
+**Force reinstall**
+- Completely removes and reinstalls the tool
+- Useful when:
+  - Tool installation is corrupted
+  - Configuration needs to be reset
+  - Troubleshooting persistent issues
+
+### How It Works
+
+1. Installed tools appear in the selection list with a ✓ checkmark and "(installed)" suffix
+2. You can select them just like uninstalled tools
+3. When you proceed, you'll be prompted for each installed tool to choose your action
+4. The installer will execute the appropriate Homebrew command:
+   - Upgrade: `brew upgrade <tool>` or `brew upgrade --cask <tool>`
+   - Reinstall: `brew reinstall <tool>` or `brew reinstall --cask <tool>`
 
 ## Available Tools
 
@@ -151,7 +182,9 @@ This is normal. Homebrew requires administrator privileges for initial setup.
 
 1. Check the log file shown at the end of execution
 2. Ensure you have internet connectivity
-3. Try running the installer again - it will skip already installed tools
+3. Try running the installer again:
+   - For new tools: they will be pre-selected automatically
+   - For corrupted tools: select them and choose "Force reinstall" when prompted
 
 ### "gum: command not found"
 
@@ -202,6 +235,7 @@ config/ansible/roles/<tool_name>/
 Run the test scripts to verify functionality:
 ```bash
 ./test-installer.sh          # Basic tests
+./test-reinstall.sh          # Test reinstall/upgrade feature
 ```
 
 ### Debugging
