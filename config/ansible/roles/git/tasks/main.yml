@@ -12,19 +12,24 @@
     msg: "Git is already installed at {{ git_installed.stdout }}"
   when: git_installed.rc == 0
 
-- name: Install Git via Homebrew
+- name: Install/Upgrade Git via Homebrew
   homebrew:
     name: git
-    state: present
+    state: latest
   when:
-    - git_installed.rc != 0
     - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
 
-- name: Simulate Git installation (dry run)
-  debug:
-    msg: "Would install Git via Homebrew"
+- name: Force reinstall Git via Homebrew
+  shell: brew reinstall git
   when:
-    - git_installed.rc != 0
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+
+- name: Simulate Git installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} Git via Homebrew"
+  when:
     - dry_run | default(false)
 
 - name: Get Git version
