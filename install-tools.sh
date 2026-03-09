@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.2"
+SCRIPT_VERSION="1.4.3"
 SCRIPT_DATE="2026-03-09"
 
 # Configuration paths
@@ -183,7 +183,7 @@ load_tools() {
             git) doc_url="https://git-scm.com/doc" ;;
             github_cli) doc_url="https://cli.github.com/manual/" ;;
             ngrok) doc_url="https://ngrok.com/docs" ;;
-            claude_code) doc_url="https://claude.ai/docs" ;;
+            claude_code) doc_url="https://code.claude.com/docs/en/quickstart" ;;
             aws_cli) doc_url="https://docs.aws.amazon.com/cli/latest/userguide/" ;;
             docker) doc_url="https://docs.docker.com/" ;;
             kubernetes_cli) doc_url="https://kubernetes.io/docs/reference/kubectl/" ;;
@@ -553,7 +553,7 @@ main() {
         [[ -z "$item" ]] && continue
 
         # Check if this is an installed tool
-        local is_installed=false
+        is_installed=false
         if [[ "$item" == "✓ "* ]]; then
             is_installed=true
             item="${item#✓ }"  # Remove checkmark prefix
@@ -561,7 +561,7 @@ main() {
         fi
 
         # Extract tool ID from display string
-        local tool_id=$(extract_tool_id "$item")
+        tool_id=$(extract_tool_id "$item")
         if [[ -n "$tool_id" ]]; then
             tools_to_install+=("$tool_id")
             if [[ "$is_installed" == true ]]; then
