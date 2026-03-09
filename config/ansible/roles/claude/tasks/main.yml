@@ -8,7 +8,7 @@
   changed_when: false
 
 - name: Install Claude Code CLI
-  when: claude_version_check.rc != 0
+  when: claude_version_check.rc != 0 or tool_action | default('install') in ['upgrade', 'reinstall']
   block:
     - name: Create Claude downloads directory
       ansible.builtin.file:

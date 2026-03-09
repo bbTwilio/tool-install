@@ -19,20 +19,26 @@
     msg: "Ngrok is already installed: {{ ngrok_version.stdout | default('Version unknown') }}"
   when: ngrok_installed.rc == 0
 
-- name: Install Ngrok via Homebrew
+- name: Install/Upgrade Ngrok via Homebrew
   homebrew:
     name: ngrok
-    state: present
+    state: latest
   when:
-    - ngrok_installed.rc != 0
     - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
     - ansible_facts['os_family'] == 'Darwin'
 
-- name: Simulate Ngrok installation (dry run)
-  debug:
-    msg: "Would install Ngrok via Homebrew"
+- name: Force reinstall Ngrok via Homebrew
+  shell: brew reinstall ngrok
   when:
-    - ngrok_installed.rc != 0
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+    - ansible_facts['os_family'] == 'Darwin'
+
+- name: Simulate Ngrok installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} Ngrok via Homebrew"
+  when:
     - dry_run | default(false)
 
 - name: Create Ngrok config directory

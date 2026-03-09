@@ -25,21 +25,24 @@
     msg: "Visual Studio Code is already installed: {{ vscode_version.stdout_lines[0] | default('Version unknown') }}"
   when: vscode_installed.rc == 0 or vscode_app.stat.exists | default(false)
 
-- name: Install Visual Studio Code via Homebrew Cask
+- name: Install/Upgrade Visual Studio Code via Homebrew Cask
   homebrew_cask:
     name: visual-studio-code
-    state: present
+    state: latest
   when:
-    - vscode_installed.rc != 0
-    - not vscode_app.stat.exists | default(false)
     - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
 
-- name: Simulate VS Code installation (dry run)
-  debug:
-    msg: "Would install Visual Studio Code via Homebrew Cask"
+- name: Force reinstall Visual Studio Code via Homebrew Cask
+  shell: brew reinstall --cask visual-studio-code
   when:
-    - vscode_installed.rc != 0
-    - not vscode_app.stat.exists | default(false)
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+
+- name: Simulate VS Code installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} Visual Studio Code via Homebrew Cask"
+  when:
     - dry_run | default(false)
 
 - name: Add VS Code to PATH if not present

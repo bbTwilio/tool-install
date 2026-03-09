@@ -33,20 +33,26 @@
       Node.js: {{ 'Installed - ' + node_version.stdout if node_installed.rc == 0 else 'Not installed' }}
       npm: {{ 'Installed - v' + npm_version.stdout if npm_installed.rc == 0 else 'Not installed' }}
 
-- name: Install Node.js via Homebrew
+- name: Install/Upgrade Node.js via Homebrew
   homebrew:
     name: node
-    state: present
+    state: latest
   when:
-    - node_installed.rc != 0
     - not dry_run | default(false)
+    - tool_action | default('install') != 'reinstall'
     - ansible_facts['os_family'] == 'Darwin'
 
-- name: Simulate Node.js installation (dry run)
-  debug:
-    msg: "Would install Node.js via Homebrew"
+- name: Force reinstall Node.js via Homebrew
+  shell: brew reinstall node
   when:
-    - node_installed.rc != 0
+    - not dry_run | default(false)
+    - tool_action | default('install') == 'reinstall'
+    - ansible_facts['os_family'] == 'Darwin'
+
+- name: Simulate Node.js installation/upgrade (dry run)
+  debug:
+    msg: "Would {{ tool_action | default('install') }} Node.js via Homebrew"
+  when:
     - dry_run | default(false)
 
 - name: Create npm global directory
