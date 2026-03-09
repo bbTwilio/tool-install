@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.0"
+SCRIPT_VERSION="1.4.1"
 SCRIPT_DATE="2026-03-09"
 
 # Configuration paths
@@ -244,11 +244,16 @@ build_tool_list() {
         tool_list+=("$display")
     done
 
-    # Output for gum with pre-selected items
-    printf "%s\n" "${tool_list[@]}" | \
-        gum choose --no-limit \
-                   --header "Select tools to install/re-install (Space to toggle, Enter to confirm):" \
-                   --selected="${preselected[@]}"
+    # Build the gum command with proper --selected flags
+    local gum_cmd=(gum choose --no-limit --header "Select tools to install/re-install (Space to toggle, Enter to confirm):")
+
+    # Add each preselected item as a separate --selected flag
+    for item in "${preselected[@]}"; do
+        gum_cmd+=(--selected "$item")
+    done
+
+    # Output tool list and execute gum command
+    printf "%s\n" "${tool_list[@]}" | "${gum_cmd[@]}"
 }
 
 # Function to extract tool ID from display string
