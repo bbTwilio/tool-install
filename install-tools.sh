@@ -33,6 +33,10 @@ TOOL_COMMANDS=()
 TOOL_INSTALLED=()
 TOOL_DOCS=()
 
+# Arrays for tracking user selections
+tools_to_install=()
+installed_tools_selected=()
+
 # Function to find array index of a tool
 get_tool_index() {
     local tool_id="$1"
@@ -267,26 +271,81 @@ extract_tool_id() {
     return 1
 }
 
+# Function to prompt for reinstall action
+prompt_reinstall_action() {
+    local tool_id="$1"
+    local idx=$(get_tool_index "$tool_id")
+    local tool_name="${TOOL_NAMES[$idx]}"
+
+    echo ""
+    echo "Tool '$tool_name' is already installed."
+    local action=$(gum choose \
+        --header "Choose action for $tool_name:" \
+        "Upgrade to latest version" \
+        "Force reinstall (remove and reinstall)")
+
+    if [[ "$action" == "Upgrade to latest version" ]]; then
+        echo "upgrade"
+    else
+        echo "reinstall"
+    fi
+}
+
+# Function to build tool action array for Ansible
+build_tool_actions() {
+    local json_array="["
+    local first=true
+
+    for tool in "${tools_to_install[@]}"; do
+        local action="install"
+
+        # Check if this tool is installed
+        for installed in "${installed_tools_selected[@]}"; do
+            if [[ "$tool" == "$installed" ]]; then
+                action=$(prompt_reinstall_action "$tool")
+                break
+            fi
+        done
+
+        if [[ "$first" == true ]]; then
+            first=false
+        else
+            json_array+=","
+        fi
+
+        json_array+="{\"name\":\"$tool\",\"action\":\"$action\"}"
+    done
+
+    json_array+="]"
+    echo "$json_array"
+}
+
 # Function to install tools using Ansible
 install_tools() {
-    local tools_to_install=("$@")
+    # Uses global arrays: tools_to_install and installed_tools_selected
 
     if [[ ${#tools_to_install[@]} -eq 0 ]]; then
         echo "No tools selected for installation."
         return 0
     fi
 
+    # Show reinstall/upgrade notifications
+    if [[ ${#installed_tools_selected[@]} -gt 0 ]]; then
+        echo ""
+        echo "The following installed tools will be processed:"
+        for tool in "${installed_tools_selected[@]}"; do
+            local idx=$(get_tool_index "$tool")
+            local name="${TOOL_NAMES[$idx]}"
+            echo "  • $name (action will be selected)"
+        done
+        echo ""
+    fi
+
     echo -e "${BLUE}Installing selected tools using Ansible...${NC}"
     log_message "Starting Ansible installation for: ${tools_to_install[*]}"
 
-    # Create tools JSON array for Ansible
-    local tools_json
-    if [[ ${#tools_to_install[@]} -eq 0 ]]; then
-        tools_json="[]"
-    else
-        # Create proper JSON array
-        tools_json=$(printf '%s\n' "${tools_to_install[@]}" | jq -R . | jq -s .)
-    fi
+    # Build tool actions JSON
+    local tools_json=$(build_tool_actions)
 
     # Create the extra vars JSON object
     local extra_vars="{\"selected_tools\": $tools_json}"
@@ -469,6 +528,7 @@ main() {
     fi
 
     # Parse selected tools (both installed and uninstalled)
+    # Clear previous selections
     tools_to_install=()
     installed_tools_selected=()
     while IFS= read -r item; do
@@ -493,55 +553,6 @@ main() {
         fi
     done <<< "$selected_items"
 
-    # Function to prompt for reinstall action
-    prompt_reinstall_action() {
-        local tool_id="$1"
-        local idx=$(get_tool_index "$tool_id")
-        local tool_name="${TOOL_NAMES[$idx]}"
-
-        echo ""
-        echo "Tool '$tool_name' is already installed."
-        local action=$(gum choose \
-            --header "Choose action for $tool_name:" \
-            "Upgrade to latest version" \
-            "Force reinstall (remove and reinstall)")
-
-        if [[ "$action" == "Upgrade to latest version" ]]; then
-            echo "upgrade"
-        else
-            echo "reinstall"
-        fi
-    }
-
-    # Function to build tool action array for Ansible
-    build_tool_actions() {
-        local json_array="["
-        local first=true
-
-        for tool in "${tools_to_install[@]}"; do
-            local action="install"
-
-            # Check if this tool is installed
-            for installed in "${installed_tools_selected[@]}"; do
-                if [[ "$tool" == "$installed" ]]; then
-                    action=$(prompt_reinstall_action "$tool")
-                    break
-                fi
-            done
-
-            if [[ "$first" == true ]]; then
-                first=false
-            else
-                json_array+=","
-            fi
-
-            json_array+="{\"name\":\"$tool\",\"action\":\"$action\"}"
-        done
-
-        json_array+="]"
-        echo "$json_array"
-    }
-
     # Confirm selection
     if [[ ${#tools_to_install[@]} -gt 0 ]]; then
         echo ""
@@ -554,7 +565,7 @@ main() {
 
         if gum confirm "Proceed with installation?"; then
             # Install tools
-            if install_tools "${tools_to_install[@]}"; then
+            if install_tools; then
                 # Show post-installation instructions
                 show_post_install_instructions "${tools_to_install[@]}"
 
