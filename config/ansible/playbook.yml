@@ -9,8 +9,11 @@
   become: no  # We'll request sudo per task as needed
 
   vars:
-    # Tools to install (will be passed from Python)
-    tools_to_install: "{{ selected_tools | default([]) }}"
+    # Tools to install with their actions (will be passed from shell script)
+    tools_with_actions: "{{ selected_tools | default([]) }}"
+
+    # Legacy support for simple tool list
+    tools_to_install: "{{ tools_with_actions | map(attribute='name') | list if tools_with_actions[0] is defined and tools_with_actions[0].name is defined else tools_with_actions }}"
 
     # Dry run mode (no actual changes)
     dry_run: "{{ dry_run_mode | default(false) }}"
@@ -59,9 +62,10 @@
   tasks:
     - name: Include tool installation roles
       include_role:
-        name: "{{ item }}"
-      loop: "{{ tools_to_install }}"
-      # All roles are now properly defined and can be included
+        name: "{{ item.name if item.name is defined else item }}"
+      vars:
+        tool_action: "{{ item.action | default('install') }}"
+      loop: "{{ tools_with_actions }}"
 
   post_tasks:
     - name: Display completion message
