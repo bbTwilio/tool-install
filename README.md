@@ -3,6 +3,10 @@
 A lightweight, interactive tool installer for macOS that uses shell scripting with the `gum` UI toolkit for the interface and Ansible for the backend installation logic.
 
 [![GitHub](https://img.shields.io/badge/GitHub-bbTwilio%2Ftool--install-blue)](https://github.com/bbTwilio/tool-install)
+![Version](https://img.shields.io/badge/version-1.4.4-green)
+![Status](https://img.shields.io/badge/status-stable-brightgreen)
+
+> **Latest Update (v1.4.4):** Fixed critical tool selection bug affecting macOS Bash 3.2. All tools now install correctly.
 
 ## Quick Start
 
@@ -240,8 +244,26 @@ Run the test scripts to verify functionality:
 
 ### Debugging
 
-Enable verbose logging by setting the debug flag:
+The installer includes comprehensive debug logging (v1.4.4+). Check the log file shown at completion for detailed debug information:
 ```bash
-# Edit the script and add after line 14:
+# View debug logs
+grep "DEBUG:" /tmp/tool-installer-*.log
+
+# Enable bash trace mode for even more detail
+# Edit the script and add after line 7:
 set -x  # Enable bash debug output
 ```
+
+### Troubleshooting
+
+#### Tools not installing (v1.4.3 bug - fixed in v1.4.4)
+If you experience issues where selected tools are not being installed:
+1. Update to the latest version (v1.4.4 or later)
+2. Run the test script: `./test-tool-selection.sh`
+3. Check debug logs for tool selection details
+
+#### Version Information
+Current version: 1.4.4 (2026-03-10)
+- Fixed critical tool selection bug affecting Bash 3.2 on macOS
+- Added comprehensive debug logging
+- See [CHANGELOG.md](CHANGELOG.md) for full version history
