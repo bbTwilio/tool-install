@@ -2,6 +2,23 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.4.5] - 2026-03-10
+
+### Fixed
+- Fixed unbound variable error in macOS bash 3.2 when expanding empty arrays
+- Replaced unsafe `${array[*]}` expansions with safe `${array[@]+"${array[*]}"}` pattern
+- This fix prevents the script from exiting with "unbound variable" errors when arrays are empty
+- Affects all debug logging statements that display array contents (11 locations fixed)
+
+### Technical Details
+- The issue occurred because bash's `set -u` option treats expansion of uninitialized/empty arrays as an error
+- The safe pattern `${array[@]+"${array[*]}"}` expands to empty string for empty arrays
+- This is particularly important for macOS which ships with bash 3.2 by default
+- The fix ensures compatibility with strict mode (`set -euo pipefail`) across all bash versions
+
+### Added
+- Test script (`test-array-fix.sh`) to verify the array expansion fix
+
 ## [1.4.4] - 2026-03-10
 
 ### Fixed

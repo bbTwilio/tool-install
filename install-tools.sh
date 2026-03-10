@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.4"
+SCRIPT_VERSION="1.4.5"
 SCRIPT_DATE="2026-03-10"
 
 # Configuration paths
@@ -308,9 +308,9 @@ build_tool_actions() {
     # Debug: Log entry to function and array size
     log_message "DEBUG: build_tool_actions called"
     log_message "DEBUG: tools_to_install size: ${#tools_to_install[@]}"
-    log_message "DEBUG: tools_to_install contents: ${tools_to_install[*]}"
+    log_message "DEBUG: tools_to_install contents: ${tools_to_install[@]+"${tools_to_install[*]}"}"
     log_message "DEBUG: installed_tools_selected size: ${#installed_tools_selected[@]}"
-    log_message "DEBUG: installed_tools_selected contents: ${installed_tools_selected[*]}"
+    log_message "DEBUG: installed_tools_selected contents: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
     local json_array="["
     local first=true
@@ -360,7 +360,7 @@ install_tools() {
 
     log_message "DEBUG: install_tools called"
     log_message "DEBUG: tools_to_install at start: ${#tools_to_install[@]} items"
-    log_message "DEBUG: tools_to_install contents: ${tools_to_install[*]}"
+    log_message "DEBUG: tools_to_install contents: ${tools_to_install[@]+"${tools_to_install[*]}"}"
     log_message "DEBUG: installed_tools_selected at start: ${#installed_tools_selected[@]} items"
 
     if [[ ${#tools_to_install[@]} -eq 0 ]]; then
@@ -382,10 +382,10 @@ install_tools() {
     fi
 
     echo -e "${BLUE}Installing selected tools using Ansible...${NC}"
-    log_message "Starting Ansible installation for: ${tools_to_install[*]}"
+    log_message "Starting Ansible installation for: ${tools_to_install[@]+"${tools_to_install[*]}"}"
 
     # Debug: Print arrays right before calling build_tool_actions
-    log_message "DEBUG: Right before build_tool_actions - tools_to_install: ${tools_to_install[*]}"
+    log_message "DEBUG: Right before build_tool_actions - tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
     log_message "DEBUG: Right before build_tool_actions - array size: ${#tools_to_install[@]}"
 
     # Build tool actions JSON
@@ -644,9 +644,9 @@ main() {
     done
 
     log_message "DEBUG: Final tools_to_install count: ${#tools_to_install[@]}"
-    log_message "DEBUG: Final tools_to_install: ${tools_to_install[*]}"
+    log_message "DEBUG: Final tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
     log_message "DEBUG: Final installed_tools_selected count: ${#installed_tools_selected[@]}"
-    log_message "DEBUG: Final installed_tools_selected: ${installed_tools_selected[*]}"
+    log_message "DEBUG: Final installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
     # Confirm selection
     if [[ ${#tools_to_install[@]} -gt 0 ]]; then
@@ -659,13 +659,13 @@ main() {
         echo ""
 
         # Debug: Log arrays before confirmation
-        log_message "DEBUG: Before confirmation - tools_to_install: ${tools_to_install[*]}"
-        log_message "DEBUG: Before confirmation - installed_tools_selected: ${installed_tools_selected[*]}"
+        log_message "DEBUG: Before confirmation - tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
+        log_message "DEBUG: Before confirmation - installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
         if gum confirm "Proceed with installation?"; then
             # Debug: Log arrays after confirmation
-            log_message "DEBUG: After confirmation - tools_to_install: ${tools_to_install[*]}"
-            log_message "DEBUG: After confirmation - installed_tools_selected: ${installed_tools_selected[*]}"
+            log_message "DEBUG: After confirmation - tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
+            log_message "DEBUG: After confirmation - installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
             # Install tools
             if install_tools; then
