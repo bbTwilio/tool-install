@@ -62,7 +62,7 @@
   tasks:
     - name: Include tool installation roles
       include_role:
-        name: "{{ item.name if item.name is defined else item }}"
+        name: "{{ item.role | default(item.name if item.name is defined else item) }}"
       vars:
         tool_action: "{{ item.action | default('install') }}"
       loop: "{{ tools_with_actions }}"

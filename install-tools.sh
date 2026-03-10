@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.6"
+SCRIPT_VERSION="1.4.7"
 SCRIPT_DATE="2026-03-10"
 
 # Configuration paths
@@ -32,6 +32,7 @@ TOOL_CATEGORIES=()
 TOOL_COMMANDS=()
 TOOL_INSTALLED=()
 TOOL_DOCS=()
+TOOL_ROLES=()  # Array for Ansible role names
 
 # Arrays for tracking user selections
 tools_to_install=()
@@ -48,6 +49,17 @@ get_tool_index() {
         fi
     done
     return 1
+}
+
+# Function to get tool role by index
+get_tool_role() {
+    local tool=$1
+    local idx=$(get_tool_index "$tool")
+    if [[ $idx -ge 0 ]]; then
+        echo "${TOOL_ROLES[$idx]}"
+    else
+        echo "$tool"  # Fallback to tool ID
+    fi
 }
 
 # Function to get tool property by index
@@ -169,6 +181,12 @@ load_tools() {
         local tool_cat="$(get_tool_property "$tool" "category")"
         local tool_cmd="$(get_tool_property "$tool" "command")"
 
+        # Get role name (default to tool ID if not specified)
+        local tool_role="$(get_tool_property "$tool" "install_methods[0].role")"
+        if [[ -z "$tool_role" ]]; then
+            tool_role="$tool"  # Fallback to tool ID for backward compatibility
+        fi
+
         # Add to arrays
         ALL_TOOLS+=("$tool")
         TOOL_NAMES+=("$tool_name")
@@ -176,6 +194,7 @@ load_tools() {
         TOOL_CATEGORIES+=("$tool_cat")
         TOOL_COMMANDS+=("$tool_cmd")
         TOOL_INSTALLED+=(0)
+        TOOL_ROLES+=("$tool_role")
 
         # Set documentation URLs
         local doc_url=""
@@ -346,8 +365,10 @@ build_tool_actions() {
             json_array+=","
         fi
 
-        json_array+="{\"name\":\"$tool\",\"action\":\"$action\"}"
-        log_message "DEBUG: Added to JSON: {\"name\":\"$tool\",\"action\":\"$action\"}"
+        # Get the role name for this tool
+        local role=$(get_tool_role "$tool")
+        json_array+="{\"name\":\"$tool\",\"role\":\"$role\",\"action\":\"$action\"}"
+        log_message "DEBUG: Added to JSON: {\"name\":\"$tool\",\"role\":\"$role\",\"action\":\"$action\"}"
     done
 
     json_array+="]"

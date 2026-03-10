@@ -2,6 +2,25 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.4.7] - 2026-03-10
+
+### Fixed
+- Fixed Ansible role not found errors for tools with mismatched IDs and role names
+- Added role field extraction from tools.yaml and included it in JSON passed to Ansible
+- The installer now correctly maps tool IDs to their corresponding Ansible role directories
+
+### Technical Details
+- Added `TOOL_ROLES` array to track Ansible role names separately from tool IDs
+- Modified `load_tools()` to extract the `role` field from `install_methods[0].role` in tools.yaml
+- Added `get_tool_role()` function to retrieve the correct role name for a tool
+- Updated `build_tool_actions()` to include both `name` and `role` fields in the JSON
+- Modified Ansible playbook to use `item.role` with fallback to `item.name` for backward compatibility
+- This fix resolves issues with tools like `github_cli` (role: `github`) and `claude_code` (role: `claude`)
+
+### Changed
+- JSON structure passed to Ansible now includes: `{"name": "tool_id", "role": "role_name", "action": "action"}`
+- Ansible playbook uses `item.role | default(item.name)` to determine which role to include
+
 ## [1.4.6] - 2026-03-10
 
 ### Fixed
