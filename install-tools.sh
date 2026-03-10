@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.5"
+SCRIPT_VERSION="1.4.6"
 SCRIPT_DATE="2026-03-10"
 
 # Configuration paths
@@ -329,14 +329,16 @@ build_tool_actions() {
         local action="install"
 
         # Check if this tool is installed
-        for installed in "${installed_tools_selected[@]}"; do
-            if [[ "$tool" == "$installed" ]]; then
-                log_message "DEBUG: Tool $tool is installed, prompting for action"
-                action=$(prompt_reinstall_action "$tool")
-                log_message "DEBUG: Selected action for $tool: $action"
-                break
-            fi
-        done
+        if [[ ${#installed_tools_selected[@]} -gt 0 ]]; then
+            for installed in "${installed_tools_selected[@]}"; do
+                if [[ "$tool" == "$installed" ]]; then
+                    log_message "DEBUG: Tool $tool is installed, prompting for action"
+                    action=$(prompt_reinstall_action "$tool")
+                    log_message "DEBUG: Selected action for $tool: $action"
+                    break
+                fi
+            done
+        fi
 
         if [[ "$first" == true ]]; then
             first=false

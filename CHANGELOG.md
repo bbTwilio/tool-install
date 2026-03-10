@@ -2,6 +2,20 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.4.6] - 2026-03-10
+
+### Fixed
+- Fixed unbound variable error when iterating over empty arrays in for loops with bash 3.2
+- Added safety check before iterating over `installed_tools_selected` array at line 332
+- The issue occurred when no installed tools were selected, causing the for loop to trigger an unbound variable error
+- This fix prevents the script from exiting with "unbound variable" error when using strict mode (`set -u`)
+
+### Technical Details
+- The problem specifically affected the `build_tool_actions()` function when iterating over an empty `installed_tools_selected` array
+- Solution: Added `if [[ ${#installed_tools_selected[@]} -gt 0 ]]` check before the for loop
+- This ensures the for loop only executes when the array has elements
+- Complements the v1.4.5 fix for array expansion in logging statements
+
 ## [1.4.5] - 2026-03-10
 
 ### Fixed
