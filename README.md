@@ -3,10 +3,10 @@
 A lightweight, interactive tool installer for macOS that uses shell scripting with the `gum` UI toolkit for the interface and Ansible for the backend installation logic.
 
 [![GitHub](https://img.shields.io/badge/GitHub-bbTwilio%2Ftool--install-blue)](https://github.com/bbTwilio/tool-install)
-![Version](https://img.shields.io/badge/version-1.4.4-green)
+![Version](https://img.shields.io/badge/version-1.5.0-green)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
-> **Latest Update (v1.4.4):** Fixed critical tool selection bug affecting macOS Bash 3.2. All tools now install correctly.
+> **Latest Update (v1.5.0):** Integrated Segment engineering laptop setup Ansible roles. Removed direct management of git, GitHub CLI, Node.js, ngrok, AWS CLI, and VS Code - these can still be installed via Homebrew directly.
 
 ## Quick Start
 
@@ -132,13 +132,10 @@ The installer supports the following tools:
 
 | Tool | Category | Description | Ansible Role |
 |------|----------|-------------|--------------|
-| AWS CLI | cloud | Amazon Web Services command-line interface | aws_cli |
-| Git | vcs | Distributed version control system | git |
-| GitHub CLI | vcs | GitHub's official command line tool with SSH setup | github |
-| Ngrok | networking | Secure tunnels to localhost | ngrok |
+| GitHub SSH Setup | vcs | Configure SSH authentication for GitHub | github |
+| AWS SSO Configuration | cloud | Configure AWS SSO profiles | aws_configure_sso |
 | Claude Code | ai | Anthropic's official CLI for Claude | claude |
-| Node.js | runtime | JavaScript runtime built on Chrome's V8 engine | nodejs |
-| VS Code | editor | Source code editor developed by Microsoft | vscode |
+| AWS JIT SSO | info | Open browser to request Bedrock access | aws_jit_sso |
 
 ### Special Roles
 
@@ -147,6 +144,25 @@ The installer supports the following tools:
 | aws_configure_sso | Configures AWS SSO profiles for seamless authentication |
 | github | Sets up SSH keys and configures GitHub access |
 | claude | Installs Claude Code CLI with shell integration |
+
+### Migration Note
+
+**For users with existing installations:** The following tools have been removed from direct installer management in v1.5.0:
+- Git
+- GitHub CLI
+- Node.js
+- ngrok
+- AWS CLI
+- VS Code
+
+These tools remain installed on your system and can be managed directly through Homebrew:
+```bash
+# Example: Update git via Homebrew
+brew upgrade git
+
+# Example: Install VS Code if needed
+brew install --cask visual-studio-code
+```
 
 ## Configuration
 
@@ -263,7 +279,7 @@ If you experience issues where selected tools are not being installed:
 3. Check debug logs for tool selection details
 
 #### Version Information
-Current version: 1.4.4 (2026-03-10)
-- Fixed critical tool selection bug affecting Bash 3.2 on macOS
-- Added comprehensive debug logging
+Current version: 1.5.0 (2026-03-11)
+- Integrated Segment engineering laptop setup Ansible roles
+- Removed direct management of common tools (now managed via Homebrew)
 - See [CHANGELOG.md](CHANGELOG.md) for full version history

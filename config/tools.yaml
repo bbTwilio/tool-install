@@ -2,93 +2,31 @@
 # This file defines all available tools and their installation methods
 
 tools:
-  aws_cli:
-    name: "AWS CLI"
-    description: "Amazon Web Services command-line interface"
-    command: "aws"
-    version_flag: "--version"
-    category: "cloud"
-    install_methods:
-      - type: ansible
-        role: aws_cli
-      - type: homebrew
-        package: awscli
-    post_install:
-      - type: configure_sso
-        description: "Configure AWS SSO profiles"
-        required: true
-    verification:
-      command: "aws --version"
-      expected_pattern: "aws-cli/"
-
-  git:
-    name: "Git"
-    description: "Distributed version control system"
-    command: "git"
-    version_flag: "--version"
+  github_ssh:
+    name: "GitHub SSH Setup"
+    description: "Configure SSH authentication for GitHub"
     category: "vcs"
-    install_methods:
-      - type: ansible
-        role: git
-      - type: homebrew
-        package: git
-    post_install:
-      - type: configure_user
-        description: "Set global user name and email"
-        required: false
-      - type: set_config
-        key: "init.defaultBranch"
-        value: "main"
-        description: "Set default branch name to 'main'"
-    verification:
-      command: "git --version"
-      expected_pattern: "git version"
-
-  github_cli:
-    name: "GitHub CLI (gh)"
-    description: "GitHub's official command line tool"
-    command: "gh"
-    version_flag: "--version"
-    category: "vcs"
+    command: "ssh -T git@github.com"
+    documentation_url: "https://docs.github.com/en/authentication/connecting-to-github-with-ssh"
     install_methods:
       - type: ansible
         role: github
-      - type: homebrew
-        package: gh
-    post_install:
-      - type: run_command
-        command: "gh auth login"
-        description: "Authenticate with GitHub"
-        interactive: true
-        required: false
     verification:
-      command: "gh --version"
-      expected_pattern: "gh version"
+      command: "ssh -T git@github.com 2>&1 | grep -q 'successfully authenticated' && echo 'SSH key configured' || echo 'SSH key not configured'"
+      expected_pattern: "SSH key"
 
-  ngrok:
-    name: "Ngrok"
-    description: "Secure tunnels to localhost"
-    command: "ngrok"
-    version_flag: "version"
-    category: "networking"
+  aws_configure_sso:
+    name: "AWS SSO Configuration"
+    description: "Configure AWS SSO profiles"
+    category: "cloud"
+    command: "aws sts get-caller-identity"
+    documentation_url: "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
     install_methods:
       - type: ansible
-        role: ngrok
-      - type: homebrew
-        package: ngrok
-      - type: homebrew_cask
-        cask: ngrok
-    post_install:
-      - type: edit_config
-        file: "~/.ngrok2/ngrok.yml"
-        add_line: "connect_cas: host"
-        description: "Add CAS connection setting"
-      - type: configure_authtoken
-        description: "Configure ngrok authtoken"
-        required: false
+        role: aws_configure_sso
     verification:
-      command: "ngrok version"
-      expected_pattern: "ngrok version"
+      command: "test -f ~/.aws/config && echo 'AWS config exists' || echo 'AWS config not found'"
+      expected_pattern: "AWS config"
 
   claude_code:
     name: "Claude Code"
@@ -112,57 +50,6 @@ tools:
     verification:
       command: "claude --version"
       expected_pattern: "claude"
-
-  nodejs:
-    name: "Node.js"
-    description: "JavaScript runtime built on Chrome's V8 engine"
-    command: "node"
-    version_flag: "--version"
-    category: "runtime"
-    install_methods:
-      - type: ansible
-        role: nodejs
-      - type: homebrew
-        package: node
-      - type: nvm
-        version: "lts"
-        description: "Install via Node Version Manager"
-    additional_commands:
-      - command: "npm"
-        description: "Node Package Manager"
-    post_install:
-      - type: set_npm_config
-        key: "prefix"
-        value: "~/.npm-global"
-        description: "Set npm global directory"
-      - type: add_to_path
-        path: "~/.npm-global/bin"
-        description: "Add npm global bin to PATH"
-    verification:
-      command: "node --version"
-      expected_pattern: "v[0-9]+"
-
-  vscode:
-    name: "Visual Studio Code"
-    description: "Source code editor developed by Microsoft"
-    command: "code"
-    version_flag: "--version"
-    category: "editor"
-    install_methods:
-      - type: ansible
-        role: vscode
-      - type: homebrew_cask
-        cask: visual-studio-code
-      - type: direct_download
-        url: "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal"
-        install_path: "/Applications/Visual Studio Code.app"
-    post_install:
-      - type: install_command_line
-        description: "Install 'code' command in PATH"
-        command: "ln -sf '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' /usr/local/bin/code"
-    verification:
-      command: "code --version"
-      expected_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
 
   aws_jit_sso:
     name: "AWS JIT SSO"
@@ -195,29 +82,22 @@ profiles:
     name: "Essential Tools"
     description: "Core development tools everyone needs"
     tools:
-      - git
-      - github_cli
-      - nodejs
+      - github_ssh
 
   cloud:
     name: "Cloud Development"
     description: "Tools for cloud and AWS development"
     tools:
-      - aws_cli
-      - ngrok
+      - aws_configure_sso
       - aws_jit_sso
 
   full:
     name: "Full Stack"
     description: "All available tools"
     tools:
-      - aws_cli
-      - git
-      - github_cli
-      - ngrok
+      - github_ssh
+      - aws_configure_sso
       - claude_code
-      - nodejs
-      - vscode
       - aws_jit_sso
 
 # Global settings

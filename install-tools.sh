@@ -7,8 +7,8 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.8"
-SCRIPT_DATE="2026-03-10"
+SCRIPT_VERSION="1.5.0"
+SCRIPT_DATE="2026-03-11"
 
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -207,21 +207,17 @@ load_tools() {
         # Set documentation URLs
         local doc_url=""
         case "$tool" in
-            git) doc_url="https://git-scm.com/doc" ;;
-            github_cli) doc_url="https://cli.github.com/manual/" ;;
-            ngrok) doc_url="https://ngrok.com/docs" ;;
+            github_ssh) doc_url="https://docs.github.com/en/authentication/connecting-to-github-with-ssh" ;;
+            aws_configure_sso) doc_url="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html" ;;
             claude_code) doc_url="https://code.claude.com/docs/en/quickstart" ;;
-            aws_cli) doc_url="https://docs.aws.amazon.com/cli/latest/userguide/" ;;
             docker) doc_url="https://docs.docker.com/" ;;
             kubernetes_cli) doc_url="https://kubernetes.io/docs/reference/kubectl/" ;;
             terraform) doc_url="https://developer.hashicorp.com/terraform/docs" ;;
             ansible) doc_url="https://docs.ansible.com/" ;;
-            nodejs) doc_url="https://nodejs.org/docs/" ;;
             python) doc_url="https://docs.python.org/3/" ;;
             rust) doc_url="https://www.rust-lang.org/learn" ;;
             go) doc_url="https://go.dev/doc/" ;;
             java) doc_url="https://docs.oracle.com/en/java/" ;;
-            vscode) doc_url="https://code.visualstudio.com/docs" ;;
             neovim) doc_url="https://neovim.io/doc/" ;;
             tmux) doc_url="https://github.com/tmux/tmux/wiki" ;;
             jq) doc_url="https://jqlang.github.io/jq/manual/" ;;
@@ -442,6 +438,12 @@ install_tools() {
     # Log the JSON being passed to Ansible for debugging
     log_message "Passing to Ansible: $extra_vars"
 
+    # Install Ansible collections if requirements file exists
+    if [[ -f "${ANSIBLE_DIR}/requirements.yml" ]]; then
+        log_message "Installing Ansible collections..."
+        ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml" --force >> "$LOG_FILE" 2>&1
+    fi
+
     # Run Ansible playbook with spinner (set ANSIBLE_CONFIG to use our config file)
     ANSIBLE_CONFIG="${ANSIBLE_DIR}/ansible.cfg" gum spin --spinner dot --title "Running Ansible playbook..." -- \
         ansible-playbook "$PLAYBOOK" \
@@ -479,42 +481,28 @@ show_post_install_instructions() {
         local name="${TOOL_NAMES[$idx]}"
 
         case "$tool" in
-            git)
-                echo -e "${YELLOW}Git:${NC}"
-                echo "  Configure your identity:"
-                echo "    git config --global user.name \"Your Name\""
-                echo "    git config --global user.email \"your.email@example.com\""
+            github_ssh)
+                echo -e "${YELLOW}GitHub SSH:${NC}"
+                echo "  To complete GitHub SSH setup:"
+                echo "    1. Your SSH key has been generated (if needed)"
+                echo "    2. Run: gh auth login"
+                echo "    3. Choose SSH authentication when prompted"
                 ;;
-            github_cli)
-                echo -e "${YELLOW}GitHub CLI:${NC}"
-                echo "  Authenticate with GitHub:"
-                echo "    gh auth login"
-                ;;
-            ngrok)
-                echo -e "${YELLOW}Ngrok:${NC}"
-                echo "  Add your auth token:"
-                echo "    ngrok config add-authtoken YOUR_TOKEN"
+            aws_configure_sso)
+                echo -e "${YELLOW}AWS SSO Configuration:${NC}"
+                echo "  To complete AWS SSO configuration:"
+                echo "    1. Install AWS CLI separately if not already installed"
+                echo "    2. Run: aws configure sso"
+                echo "    3. Follow the prompts to set up your SSO profile"
                 ;;
             claude_code)
                 echo -e "${YELLOW}Claude Code:${NC}"
                 echo "  Authenticate with Claude:"
                 echo "    claude auth"
                 ;;
-            aws_cli)
-                echo -e "${YELLOW}AWS CLI:${NC}"
-                echo "  Configure AWS credentials:"
-                echo "    aws configure"
-                echo "  Or for SSO:"
-                echo "    aws configure sso"
-                ;;
             docker)
                 echo -e "${YELLOW}Docker:${NC}"
                 echo "  Start Docker Desktop application"
-                ;;
-            vscode)
-                echo -e "${YELLOW}VS Code:${NC}"
-                echo "  Install from command line:"
-                echo "    code ."
                 ;;
         esac
 

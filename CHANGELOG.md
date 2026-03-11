@@ -2,6 +2,30 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.5.0] - 2026-03-11
+
+### Changed
+- Integrated Segment engineering laptop setup Ansible roles
+- Removed direct management of: git, GitHub CLI, Node.js, ngrok, AWS CLI, VS Code
+- These tools can still be installed via Homebrew directly
+- Updated profiles to reflect new tool set
+
+### Added
+- github_ssh tool for GitHub SSH authentication setup
+- aws_configure_sso tool for AWS SSO profile configuration
+- Ansible collection requirements file (config/ansible/requirements.yml)
+- Auto-installation of Ansible collections before running playbook
+
+### Removed
+- Removed 6 tool definitions from tools.yaml (git, github_cli, ngrok, nodejs, aws_cli, vscode)
+- Removed corresponding Ansible roles for the 6 tools
+- Removed post-install instructions for deleted tools
+
+### Migration Notes
+- Users with existing installations: The 6 removed tools remain installed on their systems
+- Future management of these tools should be done via Homebrew directly
+- The installer will no longer update or reinstall these tools
+
 ## [1.4.8] - 2026-03-10
 
 ### Fixed

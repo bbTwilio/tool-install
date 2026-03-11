@@ -48,7 +48,7 @@ echo ""
 
 # Test running the actual playbook with a dummy tool selection
 ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbook.yml \
-    -e '{"selected_tools": ["git"]}' \
+    -e '{"selected_tools": [{"name": "claude_code", "role": "claude", "action": "install"}]}' \
     --check -vv 2>&1 | tee /tmp/ansible-playbook-test.log
 
 echo ""

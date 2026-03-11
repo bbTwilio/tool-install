@@ -51,16 +51,16 @@ echo "    tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
 echo "    installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
 # Simulate adding tools
-tools_to_install+=("git" "docker")
+tools_to_install+=("claude_code" "github_ssh")
 echo ""
 echo "  After adding tools:"
 echo "    tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
 echo "    installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
 # Simulate selecting installed tools
-installed_tools_selected+=("git")
+installed_tools_selected+=("claude_code")
 echo ""
-echo "  After marking git as installed:"
+echo "  After marking claude_code as installed:"
 echo "    tools_to_install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
 echo "    installed_tools_selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 
@@ -90,7 +90,7 @@ fi
 
 echo ""
 echo "Test 6: Simulating build_tool_actions scenario (line 332 fix)"
-tools_to_install=("git" "docker" "python")
+tools_to_install=("claude_code" "github_ssh" "aws_configure_sso")
 installed_tools_selected=()  # Empty - no installed tools selected
 
 echo "  Tools to install: ${tools_to_install[@]+"${tools_to_install[*]}"}"
@@ -116,7 +116,7 @@ done
 
 echo ""
 echo "Test 7: With some installed tools"
-installed_tools_selected=("git" "python")
+installed_tools_selected=("claude_code" "aws_configure_sso")
 echo "  Installed tools selected: ${installed_tools_selected[@]+"${installed_tools_selected[*]}"}"
 echo ""
 echo "  Processing each tool:"
