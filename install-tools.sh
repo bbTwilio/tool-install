@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.4.7"
+SCRIPT_VERSION="1.4.8"
 SCRIPT_DATE="2026-03-10"
 
 # Configuration paths
@@ -157,7 +157,14 @@ check_and_install_dependencies() {
 get_tool_property() {
     local tool=$1
     local property=$2
-    yq eval ".tools.${tool}.${property}" "$TOOLS_YAML" 2>/dev/null || echo ""
+    local value
+    value=$(yq eval ".tools.${tool}.${property}" "$TOOLS_YAML" 2>/dev/null || echo "")
+    # Handle yq returning the literal string "null" for non-existent fields
+    if [[ "$value" == "null" ]]; then
+        echo ""
+    else
+        echo "$value"
+    fi
 }
 
 # Function to load tools from YAML
@@ -183,7 +190,8 @@ load_tools() {
 
         # Get role name (default to tool ID if not specified)
         local tool_role="$(get_tool_property "$tool" "install_methods[0].role")"
-        if [[ -z "$tool_role" ]]; then
+        # Check for both empty string and literal "null" from yq
+        if [[ -z "$tool_role" ]] || [[ "$tool_role" == "null" ]]; then
             tool_role="$tool"  # Fallback to tool ID for backward compatibility
         fi
 

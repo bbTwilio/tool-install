@@ -2,6 +2,19 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.4.8] - 2026-03-10
+
+### Fixed
+- Fixed "role 'null' was not found" error when yq returns literal string "null"
+- Updated get_tool_property function to convert "null" strings to empty strings
+- Added defensive check for "null" string in role extraction logic
+- This fixes installation failures for tools without install_methods fields (e.g., aws_jit_sso)
+
+### Technical Details
+- yq returns the literal string "null" when querying non-existent fields
+- Previous empty string check `[[ -z "$tool_role" ]]` didn't catch "null"
+- Now handles both empty strings and "null" strings properly
+
 ## [1.4.7] - 2026-03-10
 
 ### Fixed
