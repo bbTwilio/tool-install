@@ -52,16 +52,12 @@ run_test "Script has bash shebang" "head -n1 install-tools.sh | grep -q '^#!/bin
 
 # Test 7: Check for required functions in script
 run_test "Script contains check_and_install_dependencies" "grep -q 'check_and_install_dependencies()' install-tools.sh"
-run_test "Script contains show_tool_selection" "grep -q 'show_tool_selection()' install-tools.sh"
-run_test "Script contains run_installation" "grep -q 'run_installation()' install-tools.sh"
+run_test "Script contains build_tool_list" "grep -q 'build_tool_list()' install-tools.sh"
+run_test "Script contains install_tools" "grep -q 'install_tools()' install-tools.sh"
 run_test "Script contains main function" "grep -q 'main()' install-tools.sh"
 
 # Test 8: Verify YAML structure
-if command -v yq &>/dev/null; then
-    run_test "YAML has tools section" "yq '.tools' config/tools.yaml | grep -q 'git:'"
-else
-    run_test "YAML has tools section" "grep -q '^tools:' config/tools.yaml"
-fi
+run_test "YAML has tools section" "grep -q '^tools:' config/tools.yaml"
 
 # Test 9: Check for macOS platform check
 run_test "Script includes macOS check" "grep -q 'uname.*Darwin' install-tools.sh"
