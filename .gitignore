@@ -39,3 +39,6 @@ pip-delete-this-directory.txt
 
 # Claude
 .claude/
+
+# Git worktrees
+.worktrees/
