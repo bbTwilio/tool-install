@@ -3,8 +3,8 @@
 
 - name: Verify macOS platform
   ansible.builtin.fail:
-    msg: "This role requires macOS. Current OS: {{ ansible_system }}"
-  when: ansible_system != "Darwin"
+    msg: "This role requires macOS. Current OS: {{ ansible_facts['system'] }}"
+  when: ansible_facts['system'] != "Darwin"
 
 - name: Create certificate directory
   ansible.builtin.file:
@@ -49,7 +49,7 @@
 
 - name: Configure AWS_CA_BUNDLE in shell configuration files
   ansible.builtin.blockinfile:
-    path: "{{ item }}"
+    path: "{{ shell_config_file }}"
     block: |
       # ZScaler Certificate Configuration for AWS CLI
       export {{ zscaler_env_var_name }}="{{ zscaler_env_var_value }}"
@@ -57,6 +57,8 @@
     create: yes
     mode: '0644'
   loop: "{{ zscaler_shell_configs }}"
+  loop_control:
+    loop_var: shell_config_file
   when: cert_found
 
 - name: Test AWS connectivity with certificate (if AWS CLI installed)
@@ -68,7 +70,7 @@
   changed_when: false
   when:
     - cert_found
-    - ansible_env.PATH is search('aws')
+    - ansible_facts['env']['PATH'] is search('aws')
 
 - name: Display installation success message
   ansible.builtin.debug:
@@ -88,7 +90,7 @@
         1. Restart your terminal, OR
         2. Run: source ~/.zshrc
 
-      AWS CLI test: {{ 'SUCCESS' if aws_test.rc == 0 else 'Not tested (AWS CLI not found)' if not ansible_env.PATH is search('aws') else 'FAILED - ' + aws_test.stderr }}
+      AWS CLI test: {{ 'SUCCESS' if aws_test.rc | default(-1) == 0 else 'Not tested (AWS CLI not found)' if not ansible_facts['env']['PATH'] is search('aws') else 'FAILED - ' + aws_test.stderr | default('') }}
 
       ========================================
   when: cert_found
