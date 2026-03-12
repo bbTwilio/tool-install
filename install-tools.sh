@@ -430,7 +430,7 @@ install_tools() {
     # Install Ansible collections if requirements file exists
     if [[ -f "${ANSIBLE_DIR}/requirements.yml" ]]; then
         log_message "Installing Ansible collections..."
-        ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml" --force >> "$LOG_FILE" 2>&1
+        ansible-galaxy collection install --ignore-certs -r "${ANSIBLE_DIR}/requirements.yml" --force >> "$LOG_FILE" 2>&1
     fi
 
     # Run Ansible playbook with spinner (set ANSIBLE_CONFIG to use our config file)
