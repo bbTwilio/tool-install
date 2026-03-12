@@ -1,0 +1,33 @@
+---
+# ZScaler Certificate Configuration Defaults
+
+# Certificate name variations to search for
+zscaler_cert_names:
+  - "Zscaler Root CA"
+  - "Zscaler Intermediate Root CA"
+  - "ZscalerRootCA"
+  - "Zscaler"
+
+# Keychain locations to check (in order of preference)
+zscaler_keychains:
+  - "/System/Library/Keychains/SystemRootCertificates.keychain"
+  - "/Library/Keychains/System.keychain"
+  - "{{ ansible_env.HOME }}/Library/Keychains/login.keychain-db"
+
+# Certificate output configuration
+zscaler_cert_dir: "{{ ansible_env.HOME }}/certs"
+zscaler_cert_path: "{{ zscaler_cert_dir }}/zscaler_root_ca.pem"
+
+# Shell configuration files to update
+zscaler_shell_configs:
+  - "{{ ansible_env.HOME }}/.zshrc"
+  - "{{ ansible_env.HOME }}/.zshenv"
+  - "{{ ansible_env.HOME }}/.bash_profile"
+  - "{{ ansible_env.HOME }}/.bashrc"
+
+# Environment variable configuration
+zscaler_env_var_name: "AWS_CA_BUNDLE"
+zscaler_env_var_value: "{{ zscaler_cert_path }}"
+
+# Installation action (can be: install, upgrade, reinstall)
+zscaler_action: "{{ action | default('install') }}"

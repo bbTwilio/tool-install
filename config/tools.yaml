@@ -51,30 +51,18 @@ tools:
       command: "claude --version"
       expected_pattern: "claude"
 
-  aws_jit_sso:
-    name: "AWS JIT SSO"
-    description: "Open web page to request Bedrock access through AWS Just-In-Time SSO"
-    command: null  # This is not a tool to install
-    category: "info"
-    type: "information"
-    actions:
-      - type: open_browser
-        url: "https://twilio.okta.com/enduser/resource/catalog/entry/cen4lm8cuXUUwN3eP1d6"
-        description: "Open browser to request Bedrock access"
-      - type: display_message
-        message: |
-          Opening Web Page - AWS JIT SSO
-
-          Your browser will open to the Twilio Okta portal
-          where you can request access to AWS Bedrock.
-
-          Steps:
-          1. Click 'Request Access' for Bedrock role
-          2. Select the appropriate duration
-          3. Wait for approval (usually automatic)
-          4. Return here when complete
+  zscaler_cert:
+    name: "ZScaler Certificate"
+    description: "Configure ZScaler root certificate for AWS CLI"
+    category: "security"
+    command: "test -f ~/certs/zscaler_root_ca.pem && echo 'configured' || echo 'not configured'"
+    documentation_url: "https://help.zscaler.com/zia/certificate-pinning"
+    install_methods:
+      - type: ansible
+        role: zscaler_cert
     verification:
-      skip: true  # Nothing to verify for informational items
+      command: "test -f ~/certs/zscaler_root_ca.pem && echo 'Zscaler cert configured'"
+      expected_pattern: "Zscaler cert configured"
 
 # Installation profiles - predefined sets of tools
 profiles:
@@ -89,7 +77,7 @@ profiles:
     description: "Tools for cloud and AWS development"
     tools:
       - aws_configure_sso
-      - aws_jit_sso
+      - zscaler_cert
 
   full:
     name: "Full Stack"
@@ -98,7 +86,7 @@ profiles:
       - github_ssh
       - aws_configure_sso
       - claude_code
-      - aws_jit_sso
+      - zscaler_cert
 
 # Global settings
 settings:

@@ -1,0 +1,141 @@
+---
+# ZScaler Certificate Installation Tasks
+
+- name: Verify macOS platform
+  ansible.builtin.fail:
+    msg: "This role requires macOS. Current OS: {{ ansible_system }}"
+  when: ansible_system != "Darwin"
+
+- name: Create certificate directory
+  ansible.builtin.file:
+    path: "{{ zscaler_cert_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Search for ZScaler certificate in keychains
+  ansible.builtin.shell: |
+    for keychain in {{ zscaler_keychains | join(' ') }}; do
+      if [ -f "$keychain" ]; then
+        for cert_name in "{{ zscaler_cert_names | join('" "') }}"; do
+          if security find-certificate -c "$cert_name" "$keychain" >/dev/null 2>&1; then
+            echo "FOUND:$keychain:$cert_name"
+            exit 0
+          fi
+        done
+      fi
+    done
+    echo "NOT_FOUND"
+  register: cert_search
+  changed_when: false
+
+- name: Parse certificate search results
+  ansible.builtin.set_fact:
+    cert_found: "{{ cert_search.stdout.startswith('FOUND:') }}"
+    cert_keychain: "{{ cert_search.stdout.split(':')[1] if cert_search.stdout.startswith('FOUND:') else '' }}"
+    cert_name: "{{ cert_search.stdout.split(':')[2] if cert_search.stdout.startswith('FOUND:') else '' }}"
+
+- name: Export ZScaler certificate to PEM format
+  ansible.builtin.shell: |
+    security find-certificate -c "{{ cert_name }}" -p "{{ cert_keychain }}" > "{{ zscaler_cert_path }}"
+  when: cert_found
+  register: cert_export
+
+- name: Validate exported certificate
+  ansible.builtin.command: openssl x509 -in "{{ zscaler_cert_path }}" -text -noout
+  register: cert_validation
+  when: cert_found
+  failed_when: cert_validation.rc != 0
+  changed_when: false
+
+- name: Configure AWS_CA_BUNDLE in shell configuration files
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    block: |
+      # ZScaler Certificate Configuration for AWS CLI
+      export {{ zscaler_env_var_name }}="{{ zscaler_env_var_value }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - ZSCALER CERT"
+    create: yes
+    mode: '0644'
+  loop: "{{ zscaler_shell_configs }}"
+  when: cert_found
+
+- name: Test AWS connectivity with certificate (if AWS CLI installed)
+  ansible.builtin.shell: |
+    export {{ zscaler_env_var_name }}="{{ zscaler_env_var_value }}"
+    aws sts get-caller-identity --query Account --output text 2>&1
+  register: aws_test
+  failed_when: false
+  changed_when: false
+  when:
+    - cert_found
+    - ansible_env.PATH is search('aws')
+
+- name: Display installation success message
+  ansible.builtin.debug:
+    msg: |
+
+      ========================================
+      ZScaler Certificate Configuration Complete
+      ========================================
+
+      Certificate found: {{ cert_name }}
+      Exported to: {{ zscaler_cert_path }}
+
+      Environment variable configured:
+      {{ zscaler_env_var_name }}={{ zscaler_env_var_value }}
+
+      To apply the changes:
+        1. Restart your terminal, OR
+        2. Run: source ~/.zshrc
+
+      AWS CLI test: {{ 'SUCCESS' if aws_test.rc == 0 else 'Not tested (AWS CLI not found)' if not ansible_env.PATH is search('aws') else 'FAILED - ' + aws_test.stderr }}
+
+      ========================================
+  when: cert_found
+
+- name: Display certificate not found message
+  ansible.builtin.debug:
+    msg: |
+
+      ========================================
+      ZScaler Certificate Not Found
+      ========================================
+
+      No ZScaler certificate was found in your system keychains.
+
+      This is expected if:
+      - You're not behind a ZScaler proxy
+      - The certificate hasn't been installed yet
+      - The certificate has a different name
+
+      To manually install the certificate:
+      1. Export your ZScaler certificate from Keychain Access
+      2. Save it as: {{ zscaler_cert_path }}
+      3. Re-run this installer
+
+      Searched for certificates named:
+      {{ zscaler_cert_names | join(', ') }}
+
+      In keychains:
+      {{ zscaler_keychains | join('\n  ') }}
+
+      ========================================
+  when: not cert_found
+
+# Handle reinstall/upgrade actions
+- name: Remove existing certificate for reinstall
+  ansible.builtin.file:
+    path: "{{ zscaler_cert_path }}"
+    state: absent
+  when:
+    - zscaler_action in ['reinstall', 'upgrade']
+    - cert_found
+  tags: [reinstall, upgrade]
+
+- name: Re-export certificate after removal
+  ansible.builtin.shell: |
+    security find-certificate -c "{{ cert_name }}" -p "{{ cert_keychain }}" > "{{ zscaler_cert_path }}"
+  when:
+    - zscaler_action in ['reinstall', 'upgrade']
+    - cert_found
+  tags: [reinstall, upgrade]

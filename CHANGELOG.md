@@ -2,6 +2,48 @@
 
 All notable changes to the macOS Tool Installer will be documented in this file.
 
+## [1.5.3] - 2026-03-11
+
+### Added
+- New zscaler_cert tool for configuring ZScaler root certificates for AWS CLI
+- Automatically finds and exports ZScaler certificate from macOS keychain
+- Configures AWS_CA_BUNDLE environment variable in shell configuration files
+- Added to cloud and full profiles for users behind corporate ZScaler proxies
+
+### Features
+- Searches multiple keychains (System, Library, User) for ZScaler certificates
+- Validates exported certificate using OpenSSL
+- Supports multiple certificate name variations
+- Provides graceful handling when certificate is not found
+- Idempotent - safe to run multiple times without duplicating shell config entries
+- Supports reinstall and upgrade actions
+
+## [1.5.2] - 2026-03-11
+
+### Removed
+- Removed dead code references to 12 non-existent tools from install-tools.sh
+- Cleaned up orphaned documentation URL mappings for: docker, kubernetes_cli, terraform,
+  ansible, python, rust, go, java, neovim, tmux, jq, gum
+- Removed docker post-install instructions
+
+### Why
+- These tools were never defined in tools.yaml and the code was unreachable
+- Simplifies the installer script to only reference actually configured tools
+- Improves code maintainability by removing orphaned references
+
+## [1.5.1] - 2026-03-11
+
+### Removed
+- Removed aws_jit_sso informational tool feature
+- Deleted aws_jit_sso Ansible role
+- Removed aws_jit_sso from cloud and full profiles
+- Updated test scripts to remove aws_jit_sso references
+
+### Why
+- aws_jit_sso was an informational-only tool that provided AWS Bedrock access instructions
+- This functionality is better handled through separate documentation
+- Simplifies the tool installer to focus on actual tool installations
+
 ## [1.5.0] - 2026-03-11
 
 ### Changed

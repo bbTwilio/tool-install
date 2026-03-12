@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.5.0"
+SCRIPT_VERSION="1.5.3"
 SCRIPT_DATE="2026-03-11"
 
 # Configuration paths
@@ -210,18 +210,7 @@ load_tools() {
             github_ssh) doc_url="https://docs.github.com/en/authentication/connecting-to-github-with-ssh" ;;
             aws_configure_sso) doc_url="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html" ;;
             claude_code) doc_url="https://code.claude.com/docs/en/quickstart" ;;
-            docker) doc_url="https://docs.docker.com/" ;;
-            kubernetes_cli) doc_url="https://kubernetes.io/docs/reference/kubectl/" ;;
-            terraform) doc_url="https://developer.hashicorp.com/terraform/docs" ;;
-            ansible) doc_url="https://docs.ansible.com/" ;;
-            python) doc_url="https://docs.python.org/3/" ;;
-            rust) doc_url="https://www.rust-lang.org/learn" ;;
-            go) doc_url="https://go.dev/doc/" ;;
-            java) doc_url="https://docs.oracle.com/en/java/" ;;
-            neovim) doc_url="https://neovim.io/doc/" ;;
-            tmux) doc_url="https://github.com/tmux/tmux/wiki" ;;
-            jq) doc_url="https://jqlang.github.io/jq/manual/" ;;
-            gum) doc_url="https://github.com/charmbracelet/gum" ;;
+            zscaler_cert) doc_url="https://help.zscaler.com/zia/certificate-pinning" ;;
         esac
         TOOL_DOCS+=("$doc_url")
 
@@ -497,12 +486,17 @@ show_post_install_instructions() {
                 ;;
             claude_code)
                 echo -e "${YELLOW}Claude Code:${NC}"
-                echo "  Authenticate with Claude:"
-                echo "    claude auth"
+                echo "  Update Claude:"
+                echo "    claude update"
                 ;;
-            docker)
-                echo -e "${YELLOW}Docker:${NC}"
-                echo "  Start Docker Desktop application"
+            zscaler_cert)
+                echo -e "${YELLOW}ZScaler Certificate:${NC}"
+                echo "  Your ZScaler certificate has been configured for AWS CLI."
+                echo "  To apply the changes:"
+                echo "    1. Restart your terminal, OR"
+                echo "    2. Run: source ~/.zshrc"
+                echo "  To verify:"
+                echo "    Run: echo \$AWS_CA_BUNDLE"
                 ;;
         esac
 

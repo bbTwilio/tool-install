@@ -3,10 +3,10 @@
 A lightweight, interactive tool installer for macOS that uses shell scripting with the `gum` UI toolkit for the interface and Ansible for the backend installation logic.
 
 [![GitHub](https://img.shields.io/badge/GitHub-bbTwilio%2Ftool--install-blue)](https://github.com/bbTwilio/tool-install)
-![Version](https://img.shields.io/badge/version-1.5.0-green)
+![Version](https://img.shields.io/badge/version-1.5.3-green)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
-> **Latest Update (v1.5.0):** Integrated Segment engineering laptop setup Ansible roles. Removed direct management of git, GitHub CLI, Node.js, ngrok, AWS CLI, and VS Code - these can still be installed via Homebrew directly.
+> **Latest Update (v1.5.3):** Added ZScaler certificate configuration tool for users behind corporate ZScaler proxies, enabling AWS CLI to work properly with SSL/TLS certificate validation.
 
 ## Quick Start
 
@@ -135,7 +135,7 @@ The installer supports the following tools:
 | GitHub SSH Setup | vcs | Configure SSH authentication for GitHub | github |
 | AWS SSO Configuration | cloud | Configure AWS SSO profiles | aws_configure_sso |
 | Claude Code | ai | Anthropic's official CLI for Claude | claude |
-| AWS JIT SSO | info | Open browser to request Bedrock access | aws_jit_sso |
+| ZScaler Certificate | security | Configure ZScaler root certificate for AWS CLI | zscaler_cert |
 
 ### Special Roles
 
@@ -144,6 +144,7 @@ The installer supports the following tools:
 | aws_configure_sso | Configures AWS SSO profiles for seamless authentication |
 | github | Sets up SSH keys and configures GitHub access |
 | claude | Installs Claude Code CLI with shell integration |
+| zscaler_cert | Exports ZScaler certificate from keychain and configures AWS_CA_BUNDLE |
 
 ### Migration Note
 
@@ -279,7 +280,7 @@ If you experience issues where selected tools are not being installed:
 3. Check debug logs for tool selection details
 
 #### Version Information
-Current version: 1.5.0 (2026-03-11)
-- Integrated Segment engineering laptop setup Ansible roles
-- Removed direct management of common tools (now managed via Homebrew)
+Current version: 1.5.2 (2026-03-11)
+- Cleaned up orphaned code references to non-existent tools
+- Streamlined to support three core tools: GitHub SSH, AWS SSO, and Claude Code
 - See [CHANGELOG.md](CHANGELOG.md) for full version history
