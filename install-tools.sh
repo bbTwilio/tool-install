@@ -479,10 +479,8 @@ show_post_install_instructions() {
                 ;;
             aws_configure_sso)
                 echo -e "${YELLOW}AWS SSO Configuration:${NC}"
-                echo "  To complete AWS SSO configuration:"
-                echo "    1. Install AWS CLI separately if not already installed"
-                echo "    2. Run: aws configure sso"
-                echo "    3. Follow the prompts to set up your SSO profile"
+                echo "  To test AWS SSO configuration:"
+                echo "    1. Run: aws sso login"
                 ;;
             claude_code)
                 echo -e "${YELLOW}Claude Code:${NC}"
@@ -559,6 +557,34 @@ setup_zscaler_cert() {
     log_message "ZScaler certificate exported and environment configured"
 }
 
+# Setup standard environment variables for AWS and Claude Code
+setup_env_vars() {
+    log_message "Configuring environment variables..."
+    local shell_rc="$HOME/.zshrc"
+
+    # Define env vars as "KEY=VALUE" pairs
+    local env_vars=(
+        "AWS_PROFILE=twilio-identity-center"
+        "CLAUDE_CODE_USE_BEDROCK=1"
+        "AWS_REGION=us-east-1"
+    )
+
+    for entry in "${env_vars[@]}"; do
+        local key="${entry%%=*}"
+        local value="${entry#*=}"
+        if ! grep -q "export ${key}=${value}" "$shell_rc" 2>/dev/null; then
+            echo "export ${key}=${value}" >> "$shell_rc"
+        fi
+    done
+
+    # Export for the current session
+    export AWS_PROFILE=twilio-identity-center
+    export CLAUDE_CODE_USE_BEDROCK=1
+    export AWS_REGION=us-east-1
+
+    log_message "Environment variables configured (AWS_PROFILE, CLAUDE_CODE_USE_BEDROCK, AWS_REGION)"
+}
+
 # Main installation flow
 main() {
     echo -e "${BLUE}═══════════════════════════════════════════${NC}"
@@ -608,6 +634,9 @@ main() {
 
     # Setup ZScaler certificate trust (before any network calls)
     setup_zscaler_cert
+
+    # Setup standard environment variables
+    setup_env_vars
 
     # Check and install dependencies
     echo "Checking dependencies..."
