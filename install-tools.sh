@@ -530,6 +530,35 @@ dry_run() {
     done
 }
 
+# Setup ZScaler certificate for corporate proxy SSL/TLS trust
+setup_zscaler_cert() {
+    # Only run on macOS where ZScaler is relevant
+    if ! security find-certificate -c "Zscaler Root CA" /Library/Keychains/System.keychain >/dev/null 2>&1 && \
+       ! security find-certificate -c "Zscaler Root CA" /System/Library/Keychains/SystemRootCertificates.keychain >/dev/null 2>&1; then
+        log_message "No ZScaler Root CA found in keychains, skipping cert setup"
+        return 0
+    fi
+
+    log_message "ZScaler Root CA detected, configuring certificate trust..."
+    mkdir -p ~/certs
+    security find-certificate -a -p -c "Zscaler Root CA" > ~/certs/zscaler-root-ca.pem
+
+    # Add env vars to .zshrc if not already present
+    local shell_rc="$HOME/.zshrc"
+    for var in AWS_CA_BUNDLE SSL_CERT_FILE REQUESTS_CA_BUNDLE; do
+        if ! grep -q "export ${var}=~/certs/zscaler-root-ca.pem" "$shell_rc" 2>/dev/null; then
+            echo "export ${var}=~/certs/zscaler-root-ca.pem" >> "$shell_rc"
+        fi
+    done
+
+    # Export for the current session so downstream commands (pip, ansible-galaxy, aws) work
+    export AWS_CA_BUNDLE=~/certs/zscaler-root-ca.pem
+    export SSL_CERT_FILE=~/certs/zscaler-root-ca.pem
+    export REQUESTS_CA_BUNDLE=~/certs/zscaler-root-ca.pem
+
+    log_message "ZScaler certificate exported and environment configured"
+}
+
 # Main installation flow
 main() {
     echo -e "${BLUE}═══════════════════════════════════════════${NC}"
@@ -576,6 +605,9 @@ main() {
         echo -e "${RED}Error: This script requires macOS${NC}"
         exit 1
     fi
+
+    # Setup ZScaler certificate trust (before any network calls)
+    setup_zscaler_cert
 
     # Check and install dependencies
     echo "Checking dependencies..."
