@@ -30,6 +30,7 @@
       ansible.builtin.get_url:
         url: "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ claude_version }}/{{ claude_platform }}/claude"
         dest: "{{ claude_downloads_dir }}/claude-{{ claude_version }}-{{ claude_platform }}"
+        validate_certs: no
         mode: '0755'
         checksum: "sha256:{{ claude_manifest.platforms[claude_platform].checksum }}"
       register: claude_binary_download

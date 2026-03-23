@@ -7,8 +7,8 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.5.3"
-SCRIPT_DATE="2026-03-11"
+SCRIPT_VERSION="1.5.4"
+SCRIPT_DATE="2026-03-23"
 
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
