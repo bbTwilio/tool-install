@@ -7,8 +7,8 @@
 set -euo pipefail
 
 # Version information
-SCRIPT_VERSION="1.5.4"
-SCRIPT_DATE="2026-03-23"
+SCRIPT_VERSION="1.5.5"
+SCRIPT_DATE="2026-03-26"
 
 # Configuration paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -474,13 +474,14 @@ show_post_install_instructions() {
                 echo -e "${YELLOW}GitHub SSH:${NC}"
                 echo "  To complete GitHub SSH setup:"
                 echo "    1. Your SSH key has been generated (if needed)"
-                echo "    2. Run: gh auth login"
-                echo "    3. Choose SSH authentication when prompted"
+                echo "    2. Copy your SSH (cat ~/.ssh/ed25519.pub | pbcopy) to https://github.com/settings/keys "
+                echo "    3. Run: gh auth login"
+                echo "    4. Choose SSH authentication when prompted"
                 ;;
             aws_configure_sso)
                 echo -e "${YELLOW}AWS SSO Configuration:${NC}"
                 echo "  To test AWS SSO configuration:"
-                echo "    1. Run: aws sso login"
+                echo "    1. Run: aws sso login --profile twilio-identity-center"
                 ;;
             claude_code)
                 echo -e "${YELLOW}Claude Code:${NC}"
@@ -495,6 +496,8 @@ show_post_install_instructions() {
                 echo "    2. Run: source ~/.zshrc"
                 echo "  To verify:"
                 echo "    Run: echo \$AWS_CA_BUNDLE"
+                echo "  If SSL or cert issues persist:"
+                echo "    Run: sudo chmod +x zscaler.sh; sudo ./zscaler.sh"
                 ;;
         esac
 
