@@ -478,6 +478,11 @@ show_post_install_instructions() {
                 echo "    3. Run: gh auth login"
                 echo "    4. Choose SSH authentication when prompted"
                 ;;
+            aws_cli)
+                echo -e "${YELLOW}AWS CLI:${NC}"
+                echo "  Verify installation:"
+                echo "    aws --version"
+                ;;
             aws_configure_sso)
                 echo -e "${YELLOW}AWS SSO Configuration:${NC}"
                 echo "  To test AWS SSO configuration:"

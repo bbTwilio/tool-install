@@ -1,0 +1,22 @@
+---
+# AWS CLI installation tasks
+
+- name: Check if AWS CLI is already installed
+  ansible.builtin.command: aws --version
+  register: aws_cli_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Install AWS CLI
+  when: aws_cli_version_check.rc != 0 or tool_action | default('install') in ['upgrade', 'reinstall']
+  block:
+    - name: "{{ 'Reinstall' if tool_action | default('install') == 'reinstall' else 'Install' }} AWS CLI via Homebrew"
+      community.general.homebrew:
+        name: "{{ aws_cli_package }}"
+        state: "{{ 'latest' if tool_action | default('install') in ['upgrade', 'reinstall'] else 'present' }}"
+
+- name: Verify AWS CLI installation
+  ansible.builtin.command: aws --version
+  register: aws_cli_verify
+  changed_when: false
+  failed_when: aws_cli_verify.rc != 0

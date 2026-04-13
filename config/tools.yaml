@@ -15,6 +15,20 @@ tools:
       command: "ssh -T git@github.com 2>&1 | grep -q 'successfully authenticated' && echo 'SSH key configured' || echo 'SSH key not configured'"
       expected_pattern: "SSH key"
 
+  aws_cli:
+    name: "AWS CLI"
+    description: "Amazon Web Services Command Line Interface"
+    category: "cloud"
+    command: "aws"
+    version_flag: "--version"
+    documentation_url: "https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
+    install_methods:
+      - type: ansible
+        role: aws_cli
+    verification:
+      command: "aws --version"
+      expected_pattern: "aws-cli"
+
   aws_configure_sso:
     name: "AWS SSO Configuration"
     description: "Configure AWS SSO profiles"
@@ -76,6 +90,7 @@ profiles:
     name: "Cloud Development"
     description: "Tools for cloud and AWS development"
     tools:
+      - aws_cli
       - aws_configure_sso
       - zscaler_cert
 
@@ -84,6 +99,7 @@ profiles:
     description: "All available tools"
     tools:
       - github_ssh
+      - aws_cli
       - aws_configure_sso
       - claude_code
       - zscaler_cert

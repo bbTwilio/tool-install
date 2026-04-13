@@ -1,0 +1,3 @@
+---
+# AWS CLI role defaults
+aws_cli_package: awscli

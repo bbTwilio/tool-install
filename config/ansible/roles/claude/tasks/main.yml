@@ -71,7 +71,7 @@
       when: bash_profile.stat.exists
 
 - name: Verify Claude installation
-  ansible.builtin.command: claude --version
+  ansible.builtin.command: '{{ ansible_facts["env"]["HOME"] }}/.local/bin/claude --version'
   register: claude_verify
   changed_when: false
   failed_when: claude_verify.rc != 0
